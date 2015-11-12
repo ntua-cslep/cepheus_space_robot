@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<robot name="cepheus_robot">
+ 
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <cylinder length="0.37" radius="0.15"/>
+      </geometry>
+      <origin xyz="0 0 0.245" rpy="0 0 0"/>
+    </visual>
+  </link>
+
+  <link name="reaction_wheel">
+    <visual>
+      <material name="silver"> <color rgba="0.8 0.8 0.8 1"/> </material>
+      <geometry>
+        <box size="0.1 0.1 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+  </link>
+
+  <link name="front_mouse">
+    <visual>
+      <geometry>
+        <box size="0.12 .07 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <link name="right_mouse">
+    <visual>
+      <geometry>
+        <box size="0.12 .07 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <link name="left_mouse">
+    <visual>
+      <geometry>
+        <box size="0.12 .07 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <link name="T1">
+    <visual>
+      <material name="silver"> <color rgba="0.5 0.5 0 1"/> </material>
+      <geometry>
+        <cylinder length="0.05" radius="0.01"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 1.57 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="T2">
+    <visual>
+      <material name="silver"> <color rgba="0.5 0.5 0 1"/> </material>
+      <geometry>
+        <cylinder length="0.05" radius="0.01"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 1.57 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="T3">
+    <visual>
+      <material name="silver"> <color rgba="0.5 0.5 0 1"/> </material>
+      <geometry>
+        <cylinder length="0.05" radius="0.01"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 1.57 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="reaction_wheel_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="reaction_wheel"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1" /> 
+    <limit effort="10" lower="-10.57" upper="20.57" velocity="200.5"/>
+  </joint>
+
+  <joint name="f_odom" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_mouse"/>
+    <origin xyz="0.15 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="r_odom" type="fixed">
+    <parent link="base_link"/>
+    <child link="right_mouse"/>
+    <origin xyz="-0.1 -0.1 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="l_odom" type="fixed">
+    <parent link="base_link"/>
+    <child link="left_mouse"/>
+    <origin xyz="-0.1 0.1 0" rpy="0 0 0"/>
+  </joint>
+
+
+
+  <joint name="j_T1" type="fixed">
+    <parent link="base_link"/>
+    <child link="T1"/>
+    <origin xyz="0.085 0.147224319 0.23" rpy="0 0 -0.52"/>
+  </joint>
+
+  <joint name="j_T2" type="fixed">
+    <parent link="base_link"/>
+    <child link="T2"/>
+    <origin xyz="-0.17 0 0.23" rpy="0 0 1.57"/>
+  </joint>
+
+  <joint name="j_T3" type="fixed">
+    <parent link="base_link"/>
+    <child link="T3"/>
+    <origin xyz="0.085 -0.147224319 0.23" rpy="0 0 -2.62"/>
+  </joint>
+  
+</robot>

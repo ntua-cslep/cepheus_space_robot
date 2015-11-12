@@ -1,0 +1,33 @@
+<launch>
+        <param name="robot_description" command="cat $(find cepheus_robot)/model/cepheus.urdf" />   
+
+        <node name="encoder_card_drivers_loader" pkg="cepheus_robot" type="DM35820_driver_load.sh" output="screen">
+        </node>       
+                  
+        <!--node name="joint_state_publisher" pkg="space_robot" type="joint_state_publisher" output="screen">
+                <param name="gear_ratio" value="55" />
+                <param name="counts_per_revolution" value="2048" />
+        </node-->
+        
+        <node name="mouse_odom_publisher" pkg="cepheus_robot" type="mouse_odom_node" output="screen">
+                <param name="left_dev_event" value="/dev/input/by-path/pci-0000:00:1d.7-usb-0:1.3:1.0-event-mouse"/>
+                <param name="right_dev_event" value="/dev/input/by-path/pci-0000:00:1d.7-usb-0:1.4:1.0-event-mouse"/>
+        </node>
+
+        <node name="phase_space_inverted_node" pkg="cepheus_robot" type="phase_space_inverted_node" output="screen">
+        </node>
+
+        <node name="camera_odom_publisher" pkg="cepheus_robot" type="camera_odom_node" output="screen">
+                <param name="robot_id" value="11" />
+                <param name="udp_port" value="25000" />
+        </node>
+
+        <!--node name="thrusters" pkg="cepheus_robot" type="thruster_controller_node" output="screen">
+                <param name="frequency" value="10" />
+                <param name="resolution" value="100" />
+        </node-->
+
+        <!--include file="$(find phase_space)/launch/track_object.launch">
+        </include-->
+
+</launch>

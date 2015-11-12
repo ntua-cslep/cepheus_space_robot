@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+<robot name="space_robot">
+  
+  
+  <link name="base">
+    <visual>
+      <geometry>
+        <cylinder length="0.37" radius="0.15"/>
+      </geometry>
+      <origin xyz="0 0 0.245" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0.015 0.03 0.15" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <link name="front_mouse">
+    <visual>
+      <geometry>
+        <box size="0.12 .07 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <link name="right_mouse">
+    <visual>
+      <geometry>
+        <box size="0.12 .07 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <link name="left_mouse">
+    <visual>
+      <geometry>
+        <box size="0.12 .07 .03"/>
+      </geometry>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="15"/>
+      <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+  
+  <link name="arm">
+    <visual>
+      <geometry>
+        <box size="0.2 .02 .06"/>
+      </geometry>
+      <origin xyz="0.1 0 0" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0.1 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="forearm">
+    <visual>
+      <geometry>
+        <box size="0.2 .02 .06"/>
+      </geometry>
+      <origin xyz="0.1 0 0" rpy="0 0 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0.1 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="breadboard">
+    <visual>
+      <geometry>
+        <cylinder length="0.01" radius="0.07"/>
+      </geometry>
+      <origin xyz="0.005 0 0" rpy="0 1.57 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>  
+
+  <link name="probe_tip">
+    <visual>
+      <geometry>
+        <cylinder length="0.1" radius="0.01"/>
+      </geometry>
+      <origin xyz="0.05 0 0" rpy="0 1.57 0"/>
+    </visual>
+    <inertial>
+      <origin xyz="0.01 0 0" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
+    </inertial>
+  </link>  
+  
+
+
+
+  <joint name="shoulder" type="revolute">
+    <parent link="base"/>
+    <child link="arm"/>
+    <origin xyz="0.15 0.1 0.1" rpy="0 0 0"/>
+    <axis xyz="0 0 1" /> 
+    <limit effort="1" lower="-1.57" upper="2.57" velocity="0.5"/>
+  </joint>
+
+  <joint name="elbow" type="revolute">
+    <parent link="arm"/>
+    <child link="forearm"/>
+    <origin xyz="0.2 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1" />
+    <limit effort="1" lower="-2.54" upper="2.54" velocity="0.5"/>
+  </joint>
+
+  <joint name="wrist" type="revolute">
+    <parent link="forearm"/>
+    <child link="breadboard"/>
+    <origin xyz="0.2 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0" />
+    <limit effort="1" lower="-2.54" upper="2.54" velocity="0.5"/>
+  </joint>
+  
+  <joint name="intruder" type="prismatic">
+    <parent link="breadboard"/>
+    <child link="probe_tip"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0" />
+    <limit effort="1" lower="-0.08" upper="0.08" velocity="0.5"/>
+  </joint>
+
+  <joint name="f_odom" type="fixed">
+    <parent link="base"/>
+    <child link="front_mouse"/>
+    <origin xyz="0.15 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="r_odom" type="fixed">
+    <parent link="base"/>
+    <child link="right_mouse"/>
+    <origin xyz="-0.1 -0.1 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="l_odom" type="fixed">
+    <parent link="base"/>
+    <child link="left_mouse"/>
+    <origin xyz="-0.1 0.1 0" rpy="0 0 0"/>
+  </joint>
+
+
+</robot>
