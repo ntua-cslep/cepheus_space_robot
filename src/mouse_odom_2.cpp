@@ -185,6 +185,9 @@ int main(int argc, char **argv)
     odom.pose.pose.position.x = 0.0;
     odom.pose.pose.position.y = 0.0;
     double th =0, th1 =0, th2 =0;
+    double dx, dy, dth;
+    ros::Duration dt;
+    ros::Time data_stamp = ros::Time::now() - ros::Duration(1);
     double r1=0, r2=0;
     double scale = cpi/0.0254; //31496.06 : devide counts with this to take meters
 
@@ -200,34 +203,40 @@ int main(int argc, char **argv)
         data2 = right_mouse.getVector();
 
 
-        ros::Time data_stamp;
         //Stamp data based on latest data from mouses
         if (data2.header.stamp.toSec() > data.header.stamp.toSec())
-          data_stamp = data2.header.stamp;
+          dt = data2.header.stamp - data_stamp;
         else
-          data_stamp = data.header.stamp;
+          dt = data.header.stamp - data_stamp;
 
-        ROS_INFO("mouse real data stamp %d.%d",       data_stamp.sec,       data_stamp.nsec);
-        ROS_INFO(" ros::Time data stamp %d.%d", ros::Time::now().sec, ros::Time::now().nsec);
+        data_stamp += dt;
+
+
+        // ROS_INFO("mouse real data stamp: %f",       data_stamp.toSec());
+        // ROS_INFO(" ros::Time data stamp: %f", ros::Time::now().toSec());
 
       //calculation
         odom.header.stamp = data_stamp;
-        th += atan2( (-data.vector.x + data2.vector.x) , (0.200*39.3700787*cpi) );
+        dth = atan2( (-data.vector.x + data2.vector.x) , (0.200*39.3700787*cpi) );
+        th += dth;
 
         r1 = pow( (pow( data.vector.x,2) + pow( data.vector.y,2)) ,0.5 );
         r2 = pow( (pow(data2.vector.x,2) + pow(data2.vector.y,2)) ,0.5 );
-        // ROS_INFO("r1:%f",r1);
         th1= atan2( data.vector.y,  data.vector.x);
         th2= atan2(data2.vector.y, data2.vector.x);
-        // ROS_INFO("th1:%f",th1);
-        odom.pose.pose.position.x += ( r1*cos(th+th1) + r2*cos(th+th2) ) / (2*scale);
-        odom.pose.pose.position.y += ( r1*sin(th+th1) + r2*sin(th+th2) ) / (2*scale);
+        dx = ( r1*cos(th+th1) + r2*cos(th+th2) ) / (2*scale);
+        dy = ( r1*sin(th+th1) + r2*sin(th+th2) ) / (2*scale);
         
+        odom.pose.pose.position.x += dx;
+        odom.pose.pose.position.y += dy;
         // odom.pose.pose.position.x += (((data.vector.x + data2.vector.x)/2)*cos(th) + ((data.vector.y + data2.vector.y)/2)*sin(th))     /scale;
         // odom.pose.pose.position.y += (((data.vector.x + data2.vector.x)/2)*sin(th) + ((data.vector.y + data2.vector.y)/2)*cos(th))     /scale;
+        odom.twist.twist.linear.x = dx/dt.toSec();
+        odom.twist.twist.linear.y = dy/dt.toSec();
+
         geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
         odom.pose.pose.orientation = odom_quat;
-        //ROS_INFO("odom: x %f y %f th %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th);
+        ROS_INFO("odom: x %f y %f th %f u %f v %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th, odom.twist.twist.linear.x, odom.twist.twist.linear.y);
     
         odom_pub.publish(odom);
         
