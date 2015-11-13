@@ -194,69 +194,54 @@ int main(int argc, char **argv)
 
     while(ros::ok())
     {
-
-      // if(left_mouse.readRelativeMove() || right_mouse.readRelativeMove())
       left_mouse.readRelativeMove();
       right_mouse.readRelativeMove();
-      // {
-        data = left_mouse.getVector();
-        data2 = right_mouse.getVector();
+
+      data = left_mouse.getVector();
+      data2 = right_mouse.getVector();
 
 
-        //Stamp data based on latest data from mouses
-        if (data2.header.stamp.toSec() > data.header.stamp.toSec())
-          dt = data2.header.stamp - data_stamp;
-        else
-          dt = data.header.stamp - data_stamp;
+      //Stamp data based on latest data from mouses
+      if (data2.header.stamp.toSec() > data.header.stamp.toSec())
+        dt = data2.header.stamp - data_stamp;
+      else
+        dt = data.header.stamp - data_stamp;
 
-        data_stamp += dt;
-
-
-        // ROS_INFO("mouse real data stamp: %f",       data_stamp.toSec());
-        // ROS_INFO(" ros::Time data stamp: %f", ros::Time::now().toSec());
+      data_stamp += dt;
+      // ROS_INFO("mouse real data stamp: %f",       data_stamp.toSec());
+      // ROS_INFO(" ros::Time data stamp: %f", ros::Time::now().toSec());
 
       //calculation
-        odom.header.stamp = data_stamp;
-        dth = atan2( (-data.vector.x + data2.vector.x) , (0.200*39.3700787*cpi) );
-        th += dth;
+      odom.header.stamp = data_stamp;
+      dth = atan2( (-data.vector.x + data2.vector.x) , (0.200*39.3700787*cpi) );
+      th += dth;
 
-        r1 = pow( (pow( data.vector.x,2) + pow( data.vector.y,2)) ,0.5 );
-        r2 = pow( (pow(data2.vector.x,2) + pow(data2.vector.y,2)) ,0.5 );
-        th1= atan2( data.vector.y,  data.vector.x);
-        th2= atan2(data2.vector.y, data2.vector.x);
-        dx = ( r1*cos(th+th1) + r2*cos(th+th2) ) / (2*scale);
-        dy = ( r1*sin(th+th1) + r2*sin(th+th2) ) / (2*scale);
-        
-        odom.pose.pose.position.x += dx;
-        odom.pose.pose.position.y += dy;
-        // odom.pose.pose.position.x += (((data.vector.x + data2.vector.x)/2)*cos(th) + ((data.vector.y + data2.vector.y)/2)*sin(th))     /scale;
-        // odom.pose.pose.position.y += (((data.vector.x + data2.vector.x)/2)*sin(th) + ((data.vector.y + data2.vector.y)/2)*cos(th))     /scale;
-        odom.twist.twist.linear.x = dx/dt.toSec();
-        odom.twist.twist.linear.y = dy/dt.toSec();
+      r1 = pow( (pow( data.vector.x,2) + pow( data.vector.y,2)) ,0.5 );
+      r2 = pow( (pow(data2.vector.x,2) + pow(data2.vector.y,2)) ,0.5 );
+      th1= atan2( data.vector.y,  data.vector.x);
+      th2= atan2(data2.vector.y, data2.vector.x);
+      dx = ( r1*cos(th+th1) + r2*cos(th+th2) ) / (2*scale);
+      dy = ( r1*sin(th+th1) + r2*sin(th+th2) ) / (2*scale);
+      
+      odom.pose.pose.position.x += dx;
+      odom.pose.pose.position.y += dy;
+      odom.twist.twist.linear.x = dx/dt.toSec();
+      odom.twist.twist.linear.y = dy/dt.toSec();
 
-        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
-        odom.pose.pose.orientation = odom_quat;
-        ROS_INFO("odom: x %f y %f th %f u %f v %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th, odom.twist.twist.linear.x, odom.twist.twist.linear.y);
-    
-        odom_pub.publish(odom);
-        
+      geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
+      odom.pose.pose.orientation = odom_quat;
+      ROS_INFO("odom: x %f y %f th %f u %f v %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th, odom.twist.twist.linear.x, odom.twist.twist.linear.y);
+  
+      odom_pub.publish(odom);
+ 
+      
+      odom_to_base.header.stamp = data_stamp;
+      odom_to_base.transform.translation.x = odom.pose.pose.position.x;
+      odom_to_base.transform.translation.y = odom.pose.pose.position.y;
+      odom_to_base.transform.translation.z = 0.0;
+      odom_to_base.transform.rotation = odom.pose.pose.orientation;
 
-        odom_to_base.header.stamp = data_stamp;
-        odom_to_base.transform.translation.x = odom.pose.pose.position.x;
-        odom_to_base.transform.translation.y = odom.pose.pose.position.y;
-        odom_to_base.transform.translation.z = 0.0;
-        odom_to_base.transform.rotation = odom.pose.pose.orientation;
-
-        odom_broadcaster.sendTransform(odom_to_base);
-      // }   	
-      // else
-      // {
-      //   // No odometry data broadcasting
-      //   // Keep posting transformation data in order to work with camera
-      //   // ROS_INFO("Time data stamp  %d.%d", ros::Time::now().sec, ros::Time::now().nsec);
-      //   odom_to_base.header.stamp = ros::Time::now();
-      //   odom_broadcaster.sendTransform(odom_to_base);
-      // }
+      odom_broadcaster.sendTransform(odom_to_base);
 
       ros::spinOnce();
       loop_rate.sleep();
