@@ -34,13 +34,13 @@ public:
   {
     if((this->fd = open(this->dev.c_str(), O_RDONLY | O_NONBLOCK )) == -1) 
     {
-      ROS_ERROR("Device %s can't open. If exist try this command: sudo chmod a+rw %s",this->dev.c_str(),this->dev.c_str());
+      ROS_ERROR("Mevice %s can't open. The device may not exist or you dont have the permission to access it \nIf exist try to run ros as root or this command: sudo chmod a+rw %s",this->dev.c_str(),this->dev.c_str());
       exit(EXIT_FAILURE);
       return 1;
     }
     else
     {
-      ROS_INFO("Device %s open OK",this->dev.c_str());
+      ROS_INFO("Mouse %s open OK",this->dev.c_str());
       return 0;
     }
   }
@@ -192,8 +192,10 @@ int main(int argc, char **argv)
     while(ros::ok())
     {
 
-      if(left_mouse.readRelativeMove() || right_mouse.readRelativeMove())
-      {
+      // if(left_mouse.readRelativeMove() || right_mouse.readRelativeMove())
+      left_mouse.readRelativeMove();
+      right_mouse.readRelativeMove();
+      // {
         data = left_mouse.getVector();
         data2 = right_mouse.getVector();
 
@@ -205,26 +207,24 @@ int main(int argc, char **argv)
         else
           data_stamp = data.header.stamp;
 
-        //ROS_INFO("mouse real data stamp %d.%d",       data_stamp.sec,       data_stamp.nsec);
-        //ROS_INFO(" ros::Time data stamp %d.%d", ros::Time::now().sec, ros::Time::now().nsec);
+        ROS_INFO("mouse real data stamp %d.%d",       data_stamp.sec,       data_stamp.nsec);
+        ROS_INFO(" ros::Time data stamp %d.%d", ros::Time::now().sec, ros::Time::now().nsec);
 
       //calculation
         odom.header.stamp = data_stamp;
-        th += atan2((-data.vector.x + data2.vector.x), (0.200*800));
+        th += atan2( (-data.vector.x + data2.vector.x) , (0.200*39.3700787*cpi) );
 
-        // r1 = pow( (pow( data.vector.x,2) + pow( data.vector.y,2)) ,0.5 );
-        // r2 = pow( (pow(data2.vector.x,2) + pow(data2.vector.y,2)) ,0.5 );
+        r1 = pow( (pow( data.vector.x,2) + pow( data.vector.y,2)) ,0.5 );
+        r2 = pow( (pow(data2.vector.x,2) + pow(data2.vector.y,2)) ,0.5 );
         // ROS_INFO("r1:%f",r1);
-        
-        // th1= atan2( data.vector.y,  data.vector.x);
-        // th2= atan2(data2.vector.y, data2.vector.x);
+        th1= atan2( data.vector.y,  data.vector.x);
+        th2= atan2(data2.vector.y, data2.vector.x);
         // ROS_INFO("th1:%f",th1);
-
-        // odom.pose.pose.position.x += ( r1*cos(th+th1) + r2*cos(th+th2) ) / (2*scale);
-        // odom.pose.pose.position.y += ( r1*sin(th+th1) + r2*sin(th+th2) ) / (2*scale);
+        odom.pose.pose.position.x += ( r1*cos(th+th1) + r2*cos(th+th2) ) / (2*scale);
+        odom.pose.pose.position.y += ( r1*sin(th+th1) + r2*sin(th+th2) ) / (2*scale);
         
-        odom.pose.pose.position.x += (((data.vector.x + data2.vector.x)/2)*cos(th) + ((data.vector.y + data2.vector.y)/2)*sin(th))     /scale;
-        odom.pose.pose.position.y += (((data.vector.x + data2.vector.x)/2)*sin(th) + ((data.vector.y + data2.vector.y)/2)*cos(th))     /scale;
+        // odom.pose.pose.position.x += (((data.vector.x + data2.vector.x)/2)*cos(th) + ((data.vector.y + data2.vector.y)/2)*sin(th))     /scale;
+        // odom.pose.pose.position.y += (((data.vector.x + data2.vector.x)/2)*sin(th) + ((data.vector.y + data2.vector.y)/2)*cos(th))     /scale;
         geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
         odom.pose.pose.orientation = odom_quat;
         //ROS_INFO("odom: x %f y %f th %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th);
@@ -239,15 +239,15 @@ int main(int argc, char **argv)
         odom_to_base.transform.rotation = odom.pose.pose.orientation;
 
         odom_broadcaster.sendTransform(odom_to_base);
-      }   	
-      else
-      {
-        // No odometry data broadcasting
-        // Keep posting transformation data in order to work with camera
-        // ROS_INFO("Time data stamp  %d.%d", ros::Time::now().sec, ros::Time::now().nsec);
-        odom_to_base.header.stamp = ros::Time::now();
-        odom_broadcaster.sendTransform(odom_to_base);
-      }
+      // }   	
+      // else
+      // {
+      //   // No odometry data broadcasting
+      //   // Keep posting transformation data in order to work with camera
+      //   // ROS_INFO("Time data stamp  %d.%d", ros::Time::now().sec, ros::Time::now().nsec);
+      //   odom_to_base.header.stamp = ros::Time::now();
+      //   odom_broadcaster.sendTransform(odom_to_base);
+      // }
 
       ros::spinOnce();
       loop_rate.sleep();
