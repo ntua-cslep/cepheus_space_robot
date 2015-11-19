@@ -500,17 +500,17 @@ int main(int argument_count, char **arguments)
 	 * Iterate over all possible 16-bit values
 	 */
 
-	for (output_value = 0x0000; output_value < 0x10000; output_value++) {
+	for (output_value = 0; output_value < 16; output_value++) {
 		uint16_t input_value;
 
 		/*
 		 * Write to output port
 		 */
 
-		fprintf(stdout, "    0x%04x\n", output_value);
+		fprintf(stdout, "port %lu pin %lu high \n", output_port, output_value);
 
 		dm7820_status =
-		    DM7820_StdIO_Set_Output(board, output_port, output_value);
+		    DM7820_StdIO_Set_Output(board, output_port, (1<<output_value));
 		DM7820_Return_Status(dm7820_status,
 				     "DM7820_StdIO_Set_Output()");
 
@@ -531,6 +531,7 @@ int main(int argument_count, char **arguments)
 		//	      0,
 		//	      "ERROR: Input value does not match output value");
 		//}
+		sleep(1);
 	}
 
 	/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

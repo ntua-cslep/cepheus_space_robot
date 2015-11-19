@@ -108,8 +108,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES cepheus_robot
+  INCLUDE_DIRS include
+  LIBRARIES cepheus_robot
   CATKIN_DEPENDS common_msgs ros_control roscpp std_msgs rospy
 #  DEPENDS system_lib
 )
@@ -120,15 +120,12 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-)
+include_directories(include)
+include_directories(  ${catkin_INCLUDE_DIRS} )
 
 ## Declare a C++ library
-# add_library(cepheus_robot
-#   src/${PROJECT_NAME}/cepheus_robot.cpp
-# )
+add_library(librtd_dm7820 include/${PROJECT_NAME}/librtd-dm7820.c)
+
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -139,6 +136,7 @@ include_directories(
 add_executable(camera_odom_node src/camera_odom.cpp)
 add_executable(mouse_odom_node src/mouse_odom_2.cpp)
 add_executable(phase_space_inverted_node src/phase_space_axes_swap.cpp)
+add_executable(thrusters_node src/thruster_controller.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -148,6 +146,7 @@ add_executable(phase_space_inverted_node src/phase_space_axes_swap.cpp)
 target_link_libraries(camera_odom_node  ${catkin_LIBRARIES})
 target_link_libraries(mouse_odom_node  ${catkin_LIBRARIES})
 target_link_libraries(phase_space_inverted_node  ${catkin_LIBRARIES})
+target_link_libraries(thrusters_node  ${catkin_LIBRARIES} librtd_dm7820)
 
 #############
 ## Install ##

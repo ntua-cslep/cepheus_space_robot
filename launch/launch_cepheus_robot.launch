@@ -22,10 +22,10 @@
                 <param name="udp_port" value="25000" />
         </node>
 
-        <!--node name="thrusters" pkg="cepheus_robot" type="thruster_controller_node" output="screen">
+        <node name="thrusters_node" pkg="cepheus_robot" type="thrusters_node" output="screen">
                 <param name="frequency" value="10" />
                 <param name="resolution" value="100" />
-        </node-->
+        </node>
 
         <!--include file="$(find phase_space)/launch/track_object.launch">
         </include-->

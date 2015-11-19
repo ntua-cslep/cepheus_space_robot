@@ -230,7 +230,7 @@ int main(int argc, char **argv)
 
       geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
       odom.pose.pose.orientation = odom_quat;
-      ROS_INFO("odom: x %f y %f th %f u %f v %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th, odom.twist.twist.linear.x, odom.twist.twist.linear.y);
+      // ROS_INFO("odom: x %f y %f th %f u %f v %f", odom.pose.pose.position.x, odom.pose.pose.position.y, th, odom.twist.twist.linear.x, odom.twist.twist.linear.y);
   
       odom_pub.publish(odom);
  

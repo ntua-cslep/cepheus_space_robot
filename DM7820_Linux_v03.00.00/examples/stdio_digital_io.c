@@ -121,9 +121,9 @@ int main(int argument_count, char **arguments)
 	uint8_t input_option = 0x00;
 	uint8_t minor_option = 0x00;
 	uint8_t output_option = 0x00;
-	unsigned long int input_port = 0;
-	unsigned long int minor_number = 0;
-	unsigned long int output_port = 0;
+	unsigned int input_port = 0;
+	unsigned int minor_number = 0;
+	unsigned int output_port = 0;
 
 	program_name = arguments[0];
 
@@ -500,17 +500,17 @@ int main(int argument_count, char **arguments)
 	 * Iterate over all possible 16-bit values
 	 */
 
-	for (output_value = 0x0000; output_value < 0x10000; output_value++) {
+	for (output_value = 0; output_value < 16; output_value++) {
 		uint16_t input_value;
 
 		/*
 		 * Write to output port
 		 */
 
-		fprintf(stdout, "    0x%04x\n", output_value);
+		fprintf(stdout, "port %d pin %d high \n", output_port, output_value);
 
 		dm7820_status =
-		    DM7820_StdIO_Set_Output(board, output_port, output_value);
+		    DM7820_StdIO_Set_Output(board, output_port, (1<<output_value));
 		DM7820_Return_Status(dm7820_status,
 				     "DM7820_StdIO_Set_Output()");
 
@@ -526,11 +526,12 @@ int main(int argument_count, char **arguments)
 		 * Verify that input port value matches output port value
 		 */
 
-		if (input_value != (uint16_t) output_value) {
-			error(EXIT_FAILURE,
-			      0,
-			      "ERROR: Input value does not match output value");
-		}
+		//if (input_value != (uint16_t) output_value) {
+		//	error(EXIT_FAILURE,
+		//	      0,
+		//	      "ERROR: Input value does not match output value");
+		//}
+		sleep(1);
 	}
 
 	/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

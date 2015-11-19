@@ -2,27 +2,33 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <sys/resource.h>
+#include "dm7820_library.h"
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/WrenchStamped.h>
 #include <pthread.h>
-#include <signal.h>
-
-#include "dm7820_library.h"
 
 #define THRUST 0.87
 
 DM7820_Board_Descriptor *board;
 DM7820_Error dm7820_status;
-
-uint16_t output_value=0;
+int status;
+struct option options[] = {
+	{"help", 0, 0, 1},
+	{"minor", 1, 0, 2},
+	{"input", 1, 0, 3},
+	{"output", 1, 0, 4},
+	{0, 0, 0, 0}
+};
+uint32_t output_value;
 uint8_t help_option = 0x00;
 uint8_t input_option = 0x00;
 uint8_t minor_option = 0x00;
 uint8_t output_option = 0x00;
 unsigned int minor_number = 0;
+unsigned int output_port = 2;
 
 int count=1;
-uint16_t input_value = 0;
+char port = 0;
 double duty[8];
 
 int freq; //hz
@@ -31,36 +37,17 @@ ros::Publisher pub12, pub34, pub56;
 geometry_msgs::WrenchStamped t12, t34, t56;
 
 
-
-// Signal-safe flag for whether shutdown is requested
-sig_atomic_t volatile g_request_shutdown = 0;
-// Replacement SIGINT handler
-void mySigIntHandler(int sig)
-{
-  g_request_shutdown = 1;
-}
-
-
 void timerCallback(const ros::TimerEvent& event)
 {
-    // dm7820_status = DM7820_StdIO_Get_Input(board, DM7820_STDIO_PORT_2, &input_value);
-    // ROS_ERROR("DM7820_StdIO_Get_Input() status %d",dm7820_status);
-    // DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Get_Input()");
 
-    for(char i=0; i<8; i++) //WARNING 8 to 16
+    for(char i=0; i<8; i++)
     {
-        if(count < duty[i]*(double)res)
-        {
-            output_value |= (1<<(i+8));
-            dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, output_value);
-            // DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
-        }
+        if(count < duty[i]*(double)res) 
+            dm7820_status = DM7820_StdIO_Set_Output(board, output_port, (1<<i));
+	    DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
         else 
-        {
-            output_value &= (~(1<<(i+8)));
-            dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, output_value);
-	       // DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
-        }
+            dm7820_status = DM7820_StdIO_Set_Output(board, output_port, ~(1<<i));
+	    DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
     }
     count++;
     if(count == res) count = 1;
@@ -123,23 +110,30 @@ void controllerCallback(const geometry_msgs::Twist::ConstPtr& cmd)
 
 int main(int argc, char** argv) 
 {
-    ros::init(argc, argv, "thruster_controller", ros::init_options::NoSigintHandler);
-    signal(SIGINT, mySigIntHandler);
+    ros::init(argc, argv, "thruster_controller");
     ros::NodeHandle n;
-    ros::Rate loop_rate(1000);
+    ros::Rate loop_rate(50);
 	
+	/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	Device initialization
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% */
 
-	//Device initialization
-	ROS_INFO("Opening device with minor number %u ...\n", minor_number);
+	ROS_INFO("Opening device with minor number %lu ...\n",
+		minor_number);
+
 	dm7820_status = DM7820_General_Open_Board(minor_number, &board);
-	// DM7820_Return_Status(dm7820_status, "DM7820_General_Open_Board()");
+	DM7820_Return_Status(dm7820_status, "DM7820_General_Open_Board()");
+	/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	   Output port initialization
+	   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% */
 
+	ROS_INFO("Initializing output port %lu ...\n", output_port);
 
-	//Output port initialization
-	ROS_INFO("Initializing output port %u ...\n", DM7820_STDIO_PORT_2);
+	ROS_INFO("    Set all port bits to output ...\n");
 
-	dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, 0xFFFF, DM7820_STDIO_MODE_OUTPUT);
-	// DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
+	dm7820_status = DM7820_StdIO_Set_IO_Mode(board, output_port, 0xFFFF, DM7820_STDIO_MODE_OUTPUT);
+
+	DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
 
 
     ros::param::param<int>("~frequency", freq, 10);
@@ -173,19 +167,13 @@ int main(int argc, char** argv)
 
     ros::Timer timer = n.createTimer(ros::Duration(1/(double)(freq*res)), timerCallback);
 
-    while (!g_request_shutdown)
-    {
-    // Do non-callback stuff
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
 
+    ros::spin();
 
-  // Do pre-shutdown tasks
-    dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, 0);
-    ROS_WARN("\n\tThrusters OFF");
     
-    ros::shutdown();
-   
+    for (int i; i<8; i++) duty[i]=0;
+    //dac.writeDigitalPort(PORTA, 0); //shut off all thrusters
+
+    //exit(signum);
     return 0;
 }
