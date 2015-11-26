@@ -634,7 +634,7 @@ int main(int argument_count, char **arguments)
 		 */
 
 		fprintf(stdout,
-			"    Encoder 0: 0x%04x    Encoder 1: 0x%04x\r",
+			"    Encoder 0: %u    Encoder 1: %u\r",
 			value_0_a, value_1_a);
 
 	}

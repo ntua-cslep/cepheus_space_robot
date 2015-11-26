@@ -16,6 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
   control_msgs
   trajectory_msgs 
   kdl_parser
+  hardware_interface
+  controller_interface
+  controller_manager
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +114,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES cepheus_robot
   CATKIN_DEPENDS common_msgs ros_control roscpp std_msgs rospy
-#  DEPENDS system_lib
+  DEPENDS system_lib
 )
 
 ###########
@@ -126,7 +129,6 @@ include_directories(  ${catkin_INCLUDE_DIRS} )
 ## Declare a C++ library
 add_library(librtd_dm7820 include/${PROJECT_NAME}/librtd-dm7820.c)
 
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -137,6 +139,7 @@ add_executable(camera_odom_node src/camera_odom.cpp)
 add_executable(mouse_odom_node src/mouse_odom_2.cpp)
 add_executable(phase_space_inverted_node src/phase_space_axes_swap.cpp)
 add_executable(thrusters_node src/thruster_controller.cpp)
+add_executable(cepheus_interface_node src/cepheus_interface.cpp src/cepheus_hardware.cpp src/cepheus_interface.h)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
