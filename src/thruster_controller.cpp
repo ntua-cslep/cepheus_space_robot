@@ -1,3 +1,13 @@
+#include <errno.h>
+#include <error.h>
+#include <getopt.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include <ros/ros.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -53,13 +63,13 @@ void timerCallback(const ros::TimerEvent& event)
         {
             output_value |= (1<<(i+8));
             dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, output_value);
-            // DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
+            DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
         }
         else 
         {
             output_value &= (~(1<<(i+8)));
             dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, output_value);
-	       // DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
+	    DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
         }
     }
     count++;
@@ -132,14 +142,14 @@ int main(int argc, char** argv)
 	//Device initialization
 	ROS_INFO("Opening device with minor number %u ...\n", minor_number);
 	dm7820_status = DM7820_General_Open_Board(minor_number, &board);
-	// DM7820_Return_Status(dm7820_status, "DM7820_General_Open_Board()");
+	DM7820_Return_Status(dm7820_status, "DM7820_General_Open_Board()");
 
 
 	//Output port initialization
 	ROS_INFO("Initializing output port %u ...\n", DM7820_STDIO_PORT_2);
 
 	dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, 0xFFFF, DM7820_STDIO_MODE_OUTPUT);
-	// DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
+	DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
 
 
     ros::param::param<int>("~frequency", freq, 10);
@@ -183,6 +193,7 @@ int main(int argc, char** argv)
 
   // Do pre-shutdown tasks
     dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, 0);
+    DM7820_Return_Status(dm7820_status, "DM7820_StdIO_StdIO_Set_Output()");
     ROS_WARN("\n\tThrusters OFF");
     
     ros::shutdown();

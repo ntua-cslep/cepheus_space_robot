@@ -304,6 +304,8 @@ CepheusHW::CepheusHW()
   encoder_5_ovf = 0;
   encoder_6_ovf = 0;
 
+  uint16_t encoder_init_value = 0;
+
   encoder_1 = encoder_init_value;
   encoder_2 = encoder_init_value;
   encoder_3 = encoder_init_value;

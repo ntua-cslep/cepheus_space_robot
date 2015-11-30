@@ -19,12 +19,6 @@
 
 void CepheusHW::writeMotors()
 {
-  // dac.updateDAC(1, -cmd[0]);
-  // dac.updateDAC(2,  cmd[1]);
-  // dac.updateDAC(3, -cmd[3]);
-  // dac.updateDAC(4, -cmd[4]);
-  // dac.updateDAC(5, -cmd[5]);
-
   uint16_t width[6];
   width[0]= (uint16_t)cmd[0]*250;
   width[1]= (uint16_t)cmd[1]*250;

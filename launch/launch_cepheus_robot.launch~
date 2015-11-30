@@ -14,18 +14,21 @@
                 <param name="right_dev_event" value="/dev/input/by-path/pci-0000:00:1d.7-usb-0:1.4:1.0-event-mouse"/>
         </node>
 
-        <node name="phase_space_inverted_node" pkg="cepheus_robot" type="phase_space_inverted_node" output="screen">
-        </node>
+        <!--node name="phase_space_inverted_node" pkg="cepheus_robot" type="phase_space_inverted_node" output="screen">
+        </node-->
 
         <node name="camera_odom_publisher" pkg="cepheus_robot" type="camera_odom_node" output="screen">
                 <param name="robot_id" value="11" />
                 <param name="udp_port" value="25000" />
         </node>
 
-        <!--node name="thrusters" pkg="cepheus_robot" type="thruster_controller_node" output="screen">
+        <node name="thrusters_node" pkg="cepheus_robot" type="thrusters_node" output="screen">
                 <param name="frequency" value="10" />
                 <param name="resolution" value="100" />
-        </node-->
+        </node>
+
+        <node name="cepheus_interface_node" pkg="cepheus_robot" type="cepheus_interface_node" output="screen">
+        </node>
 
         <!--include file="$(find phase_space)/launch/track_object.launch">
         </include-->
