@@ -43,14 +43,13 @@
   <build_depend>nav_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>commont_msgs</build_depend>
+  <build_depend>common_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>hardware_interface</build_depend>
   <build_depend>controller_interface</build_depend>
   <build_depend>controller_manager</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
-  <build_depend>udp_server</build_depend>
   <build_depend>urdf</build_depend>
   <build_depend>tf</build_depend>
   
@@ -65,7 +64,6 @@
   <run_depend>ros_control</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
-  <run_depend>udp_server</run_depend>
   <run_depend>urdf</run_depend>
   <run_depend>tf</run_depend>
 
