@@ -110,12 +110,12 @@
 
 
 
-  <joint name="reaction_wheel_joint" type="revolute">
+  <joint name="reaction_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="reaction_wheel"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <axis xyz="0 0 1" /> 
-    <limit effort="10" lower="-10.57" upper="20.57" velocity="200.5"/>
+    <!--limit effort="10" velocity="200.5"/-->
   </joint>
 
   <joint name="f_odom" type="fixed">

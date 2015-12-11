@@ -17,7 +17,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "cepheus_interface_node");
     ros::NodeHandle n;
-    ros::Rate loop_rate(1000.0);
+    ros::Rate loop_rate(200.00);
 
     CepheusHW robot;
     controller_manager::ControllerManager cm(&robot);

@@ -69,7 +69,7 @@ void timerCallback(const ros::TimerEvent& event)
         {
             output_value &= (~(1<<(i+8)));
             dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, output_value);
-	    DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
+            DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
         }
     }
     count++;

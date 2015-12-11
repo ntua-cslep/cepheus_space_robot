@@ -2,6 +2,9 @@
         <param name="robot_description" command="cat $(find cepheus_robot)/model/cepheus.urdf" />   
 
         <node name="encoder_card_drivers_loader" pkg="cepheus_robot" type="DM35820_driver_load.sh" output="screen">
+        </node>  
+
+	<node name="Env_parameters_loader" pkg="cepheus_robot" type="init_script.sh" output="screen">
         </node>       
                   
         <!--node name="joint_state_publisher" pkg="space_robot" type="joint_state_publisher" output="screen">
@@ -29,6 +32,15 @@
 
         <node name="cepheus_interface_node" pkg="cepheus_robot" type="cepheus_interface_node" output="screen">
         </node>
+
+        <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_publisher reaction_wheel_position_controller" >
+        </node>
+
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+                <!--param name="tf_prefix" value="servicer" /-->
+                <param name="publish_frequency" value="50" >
+        </node>  
+
 
         <!--include file="$(find phase_space)/launch/track_object.launch">
         </include-->
