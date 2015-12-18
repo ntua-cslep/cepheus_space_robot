@@ -8,16 +8,16 @@ A ROS package that include all the source code that runs on Space robot's PC.
 # Instructions
 ## Load DM95820 Drivers
 
-- '''source devel/setup.bash'''
+- ```source devel/setup.bash```
 
 - Copy kernel module to the drivers directory.
-'''sudo cp $(rospack find cepheus_robot)/DM7820_Linux_*/driver/rtd-dm7820.ko /lib/modules/$(uname -r)/kernel/drivers/'''
+```sudo cp $(rospack find cepheus_robot)/DM7820_Linux_*/driver/rtd-dm7820.ko /lib/modules/$(uname -r)/kernel/drivers/```
 
 - Add the name of themodule to the file /etc/modules. You can edit the file or just append to it as shown here.
-'''echo 'rtd_dm7820.ko' | sudo tee -a /etc/modules'''
+```echo 'rtd_dm7820.ko' | sudo tee -a /etc/modules```
 
 - Update the list of module dependencies.
-'''sudo depmod'''
+```sudo depmod```
 
 - Reboot the computer and voila, it worked.
 
