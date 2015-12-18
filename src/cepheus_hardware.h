@@ -13,7 +13,10 @@
 #include <hardware_interface/robot_hw.h>
 #include <dm7820_library.h>
 
-#define FIR_LENGTH 10
+#define FIR_LENGTH 15 
+#define PWM_DIVIDER 25000
+#define MAX_CURRENT 1.72//A
+
 
 class CepheusHW : public hardware_interface::RobotHW
 {
@@ -31,8 +34,8 @@ private:
   double vel[4];
   double eff[4];
   
-  double vel_temp[4];
-  double vel_fir[FIR_LENGTH];
+  double vel_new[4];
+  double vel_fir[FIR_LENGTH][4];
 
   //CARD
   DM7820_Board_Descriptor *board;

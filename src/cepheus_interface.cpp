@@ -13,9 +13,18 @@
 
 #include "cepheus_hardware.h"
 
+// Signal-safe flag for whether shutdown is requested
+sig_atomic_t volatile g_request_shutdown = 0;
+// Replacement SIGINT handler
+void mySigIntHandler(int sig)
+{
+  g_request_shutdown = 1;
+}
+
 int main(int argc, char** argv) 
 {
-    ros::init(argc, argv, "cepheus_interface_node");
+    ros::init(argc, argv, "cepheus_interface_node", ros::init_options::NoSigintHandler);
+    signal(SIGINT, mySigIntHandler);
     ros::NodeHandle n;
     ros::Rate loop_rate(200.00);
 
@@ -28,7 +37,7 @@ int main(int argc, char** argv)
     ros::Time prev_time = ros::Time::now();
 
 
-    while(ros::ok())
+    while(!g_request_shutdown)
     {
         ros::Time curr_time = ros::Time::now();
         ros::Duration period = curr_time - prev_time;
@@ -41,6 +50,5 @@ int main(int argc, char** argv)
 
         loop_rate.sleep();
     }
-
     return 0;
 }

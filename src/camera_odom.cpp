@@ -15,6 +15,7 @@
 #include <inttypes.h>
 
 #include <sstream>
+#include <signal.h>
 
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
@@ -27,10 +28,13 @@
 #define DEFAULT_PORT 25000  //The default port on which to listen for incoming data
 #define ROBOT_ID 11 //this is the default identification number used also in camera program 
 
-void die(char *s)
+
+// Signal-safe flag for whether shutdown is requested
+sig_atomic_t volatile g_request_shutdown = 0;
+// Replacement SIGINT handler
+void mySigIntHandler(int sig)
 {
-    perror(s);
-    exit(1);
+  g_request_shutdown = 1;
 }
  
 int main(int argc, char **argv)
@@ -40,7 +44,8 @@ int main(int argc, char **argv)
      * ROS setup
      ********************************************************************************************/
 
-    ros::init(argc, argv, "udp_server");
+    ros::init(argc, argv, "udp_server", ros::init_options::NoSigintHandler);
+    signal(SIGINT, mySigIntHandler);
     ros::NodeHandle nh;
     ros::Publisher pub_odom = nh.advertise<nav_msgs::Odometry>("camera/odom", 1000);
     ros::Rate loop_rate(500); //dont forget to add looprate sleep in the end
@@ -107,7 +112,7 @@ int main(int argc, char **argv)
     }
 
 
-    while(ros::ok())
+    while(!g_request_shutdown)
     {
         /**********************************************************************************
                                   BLOCKING BLOCKING BLOCKING BLOCKING                         
@@ -189,7 +194,7 @@ int main(int argc, char **argv)
         ros::spinOnce();
         //loop_rate.sleep();//consider removing as we have a blocking call in the loop
     }
- 
+    ROS_WARN("Closing udp port: %d of camera node", port);
     close(s);
     return 0;
 }

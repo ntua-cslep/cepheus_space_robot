@@ -22,23 +22,32 @@ void CepheusHW::writeMotors()
   uint16_t dir[4];
   uint16_t width[4];
 
+
   for (int i=0; i<4; i++)
   {
-    if (cmd[i]>= 25000) cmd[i] = 25000;
-    if (cmd[i]<=-25000) cmd[i] =-25000;
 
-    if (cmd[i] >0.0) 
+    double current = (cmd[i]/0.0538) + ((1.72*vel[i])/500);// + (0.12*MAX_CURRENT); //cmd in Nm + trives + starting Current
+    
+    //saturate to max current
+    if (current >= MAX_CURRENT) current = MAX_CURRENT;
+    if (current <=-MAX_CURRENT) current =-MAX_CURRENT;
+    //ROS_INFO("current %f", current);
+
+    eff[i] = current*0.0538;
+
+    if (current >= 0.0) 
     {
       dir[i] = 0;
-      width[i] = (uint16_t)cmd[i];
+      width[i] = (uint16_t)(current*(PWM_DIVIDER/MAX_CURRENT));
     }
     else
     {
       dir[i] = 1;
-      width[i] = (uint16_t)(-cmd[i]);
+      width[i] = (uint16_t)(-current*(PWM_DIVIDER/MAX_CURRENT));
     }
   }
 
+  //Seting direction pins for Port 2
   uint16_t directions = (dir[0]<<1) | (dir[1]<<3) | (dir[2]<<5) | (dir[3]<<7);
 
   dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, directions);
@@ -59,12 +68,6 @@ void CepheusHW::writeMotors()
 
   dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_OUTPUT_D,  width[3]);
   DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width[3]");
-
-
-  eff[0] = cmd[0];
-  eff[1] = cmd[1];
-  eff[2] = cmd[2];
-  eff[3] = cmd[3];
 }
 
 void CepheusHW::readEncoders(ros::Duration dt)
@@ -191,7 +194,7 @@ void CepheusHW::readEncoders(ros::Duration dt)
     error(EXIT_FAILURE, 0, "ERROR: Channel 1B negative overflow status not cleared");
 
 
-  ROS_DEBUG("1: %d, 2: %d, 3: %d, 4: %d", encoder_1, encoder_2, encoder_3, encoder_4);
+  // ROS_DEBUG("1: %d, 2: %d, 3: %d, 4: %d", encoder_1, encoder_2, encoder_3, encoder_4);
 
   // Position Calculation radians
   pos[0]=  (double)encoder_1*2*M_PI/(4095) - offset_pos[0];
@@ -204,24 +207,23 @@ void CepheusHW::readEncoders(ros::Duration dt)
   // Speed Calculation radians/sec
   for(int i=0; i<4; i++)
   {
-    vel_temp[i]= ((pos[i] - prev_pos[i])) / dt.toSec();
+    vel_new[i]= ((pos[i] - prev_pos[i])) / dt.toSec();
     prev_pos[i] = pos[i];
+
+     // vel[0] = vel_new[0]; 
+    for (int j=0; j<(FIR_LENGTH-1); j++)
+      vel_fir[j][i] = vel_fir[j+1][i]; 
+
+    vel_fir[FIR_LENGTH-1][i] = vel_new[i];
+
+    double filtered=0;
+    for (int j=0; j<FIR_LENGTH; j++)
+      filtered += vel_fir[j][i];
+
+    vel[i] = filtered/FIR_LENGTH;
+
   }
 
-   // vel[0] = vel_temp[0]; 
-
-  for (int i=0; i<(FIR_LENGTH-1); i++)
-  {
-    vel_fir[i] = vel_fir[i+1]; 
-  } 
-  vel_fir[FIR_LENGTH-1] = vel_temp[0];
-
-  double filtered=0;
-  for (int i=0; i<FIR_LENGTH; i++)
-  {
-    filtered += vel_fir[i];
-  }
-  vel[0] = filtered/FIR_LENGTH;
 
 
 
@@ -392,7 +394,7 @@ CepheusHW::CepheusHW()
   encoder_3 = encoder_init_value;
   encoder_4 = encoder_init_value;
 
-  //initialize prev_pos, offset_pos and pos
+  //initialize prev_pos, offset_pos and filter buffer
   for(int i=0; i<4; i++)
   {
     pos[i] = 0;
@@ -401,9 +403,7 @@ CepheusHW::CepheusHW()
 
     //initialize FIR
     for(int j=0; j<FIR_LENGTH; j++)
-    {
-      vel_fir[j]=0;
-    }
+      vel_fir[j][i]=0;
   }
 
 
@@ -429,8 +429,8 @@ CepheusHW::CepheusHW()
   dm7820_status = DM7820_PWM_Set_Period_Master(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_PERIOD_MASTER_25_MHZ);
   DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Period_Master()");
 
-  // Set pulse width modulator period to obtain 1 kHz frequency
-  dm7820_status = DM7820_PWM_Set_Period(board, DM7820_PWM_MODULATOR_0, 25000);
+  // Set pulse width modulator period to obtain frequency 25000000/PWM_DIVIDER Hz
+  dm7820_status = DM7820_PWM_Set_Period(board, DM7820_PWM_MODULATOR_0, PWM_DIVIDER);
   DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Period()");
 
   //Set width master clock to 25 MHz clock
@@ -462,6 +462,9 @@ CepheusHW::CepheusHW()
 
 CepheusHW::~CepheusHW() 
 { 
+  for(int i=0;i<4;i++) cmd[i]=0;
+  writeMotors();  
+  ROS_WARN("Hardware safe closing");
   dm7820_status = DM7820_General_Close_Board(board);
   DM7820_Return_Status(dm7820_status, "DM7820_General_Close_Board()");
 }

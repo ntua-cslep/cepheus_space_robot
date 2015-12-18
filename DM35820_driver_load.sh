@@ -9,6 +9,6 @@
 #
 
 printf "\033[1;34m \nDM35820 IO card drivers loading script started\033[0m\n"
-make -C /home/cepheus/catkin_ws/src/cepheus_robot/DM7820*/driver unload
-make -C /home/cepheus/catkin_ws/src/cepheus_robot/DM7820*/driver load
+make -C $(rospack find cepheus_robot)/DM7820*/driver unload
+make -C $(rospack find cepheus_robot)/DM7820*/driver load
 printf "\033[1;34m DM35820 IO card drivers loading script ended\033[0m\n\n"
