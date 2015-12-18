@@ -15,7 +15,7 @@ A ROS package that include all the source code that runs on Space robot's PC.
 
 ```sudo cp $(rospack find cepheus_robot)/DM7820_Linux_*/driver/rtd-dm7820.ko /lib/modules/$(uname -r)/kernel/drivers/```
 
-- Add the name of themodule to the file /etc/modules. You can edit the file or just append to it as shown here.
+- Add the name of the module to the file /etc/modules. You can edit the file or just append to it as shown here.
 
 ```echo 'rtd_dm7820.ko' | sudo tee -a /etc/modules```
 
@@ -25,16 +25,16 @@ A ROS package that include all the source code that runs on Space robot's PC.
 
 - Reboot the computer and voila, it worked.
 
-##Mouse Instalation 
+##Mouse Installation 
 - In the launch file of the package modify the parameters of the mouse_odom node to correspond to the correct mouses like that:
 
-_/dev/input/by-path/"correct mouse name"_
+_/dev/input/by-path/ "correct mouse name"_
 
 
 ## In every boot run the following commands before launch:     
 - ```cd ~/catkin_ws```
 - ```su```
-- password root
+- password: _root_
 - ```soure devel/setup.bash```
 - ```export ROS_MASTER_URI=http://cepheus.local:11311```
 - ```export ROS_IP=192.168.1.165```
