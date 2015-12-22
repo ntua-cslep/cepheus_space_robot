@@ -2,9 +2,6 @@
         <param name="robot_description" command="cat $(find cepheus_robot)/model/cepheus.urdf" />   
 
         <rosparam command="load" file="$(find cepheus_robot)/config/controllers.yaml"/>
-
-        <!--node name="encoder_card_drivers_loader" pkg="cepheus_robot" type="DM35820_driver_load.sh" output="screen">
-        </node-->
         
         <node name="mouse_odom_publisher" pkg="cepheus_robot" type="mouse_odom_node" output="screen">
                 <param name="left_dev_event" value="/dev/input/by-path/pci-0000:00:1d.7-usb-0:1.3:1.0-event-mouse"/>
@@ -14,6 +11,9 @@
         <!--node name="phase_space_inverted_node" pkg="cepheus_robot" type="phase_space_inverted_node" output="screen">
         </node-->
 
+        <!--include file="$(find phase_space)/launch/track_object.launch">
+        </include-->
+        
         <node name="camera_odom_publisher" pkg="cepheus_robot" type="camera_odom_node" output="screen">
                 <param name="robot_id" value="11" />
                 <param name="udp_port" value="25000" />
@@ -36,7 +36,5 @@
         </node>  
 
 
-        <!--include file="$(find phase_space)/launch/track_object.launch">
-        </include-->
 
 </launch>
