@@ -16,6 +16,67 @@
 #include "cepheus_hardware.h"
 #include <math.h>
 
+void CepheusHW::setThrustPwm(double *thrust, double min_thrust, double max_thrust)
+{
+  double duty[4];
+  uint16_t dir[4];
+
+  for(int i=0; i<4; i++)
+  {
+    if (thrust[i] > min_thrust && thrust[i] < max_thrust)
+    {
+      duty[i] = thrust[i]/max_thrust;
+      dir[i] = 1;
+    }
+    else if (thrust[i] >= max_thrust)
+    {
+      duty[i] = 1;
+      dir[i] = 1;
+    }
+    else if (thrust[i] < -min_thrust && thrust[i] > -max_thrust)
+    {
+      duty[i] = 1 + (thrust[i]/max_thrust);
+      dir[i] = 2;
+    }
+    else if (thrust[i] <= -max_thrust)
+    {
+      duty[i] = 1;
+      dir[i] = 2;
+    }
+    else
+    {
+      duty[i] = 0;
+      dir[i] = 0;
+    }
+  }
+
+  //Seting which pin of the inverted and non inverted pin of a PWM will be used
+  uint16_t output = dir[0]<<0 | dir[1]<<2 | dir[2]<<4 | dir[3]<<6;
+
+  dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, 0);
+  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
+
+  // Set port's 2 // bits to peripheral output
+  dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, (output<<8), DM7820_STDIO_MODE_PER_OUT);
+  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
+  //Set port's 2 bits to PWM output pulse width modulator peripheral
+  dm7820_status = DM7820_StdIO_Set_Periph_Mode(board, DM7820_STDIO_PORT_2, (output<<8), DM7820_STDIO_PERIPH_PWM);
+  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Periph_Mode()");
+
+  //Reset port's 2 bits to STD IO bits in order not to act like an PWM
+  dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, ((~output)<<8), DM7820_STDIO_MODE_OUTPUT);
+  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
+
+
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_A, (uint32_t)(duty[0]*period) );
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width()");
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_B, (uint32_t)(duty[1]*period) );
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width()");
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_C, (uint32_t)(duty[2]*period) );
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width()");
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_D, (uint32_t)(duty[3]*period) );
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width()");
+}
 
 void CepheusHW::writeMotors()
 {
@@ -47,27 +108,21 @@ void CepheusHW::writeMotors()
     }
   }
 
-  //Seting direction pins for Port 2
+  //Seting direction (pins for Port 2)
   uint16_t directions = (dir[0]<<1) | (dir[1]<<3) | (dir[2]<<5) | (dir[3]<<7);
 
   dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, directions);
-  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_dir[3]");
+  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_motor_direction");
 
-  // Set output PWM width and direction
+  // Set output PWM width
   dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_OUTPUT_A,  width[0]);
-  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width[0]"); 
-
-  
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_motor_Width[0]");   
   dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_OUTPUT_B,  width[1]);
-  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width[1]");
-
-
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_motor_Width[1]");
   dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_OUTPUT_C,  width[2]);
-  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width[2]");
-
-
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_motor_Width[2]");
   dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_OUTPUT_D,  width[3]);
-  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Width[3]");
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_motor_Width[3]");
 }
 
 void CepheusHW::readEncoders(ros::Duration dt)
@@ -401,30 +456,35 @@ CepheusHW::CepheusHW()
     prev_pos[i] = pos[i];
     offset_pos[i] = 0;
 
-    //initialize FIR
+    //initialize FIR filter
     for(int j=0; j<FIR_LENGTH; j++)
       vel_fir[j][i]=0;
   }
 
 
+
   //device opened above
 
   /******************************************************************
-                                PWM Init
+                          motor PWM Init
   *******************************************************************/
-  //Disable all pulse width modulators to put them into a known state; any
+  //Disable pulse width modulators 0 to put them into a known state.
   //pulse width modulator should be disabled before programming it
   dm7820_status = DM7820_PWM_Enable(board, DM7820_PWM_MODULATOR_0, 0x00);
-  DM7820_Return_Status(dm7820_status, "DM7820_PWM_Enable()");
-
-  // Set port's 2 (0,2,4,6) bits to peripheral output
+  DM7820_Return_Status(dm7820_status, "DM7820_PWM_0_Disable()");
+ 
+  // Set port's 2 (0,2,4,6) bits to peripheral output. For using as current control signal for motro controller
   dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, 0x0055, DM7820_STDIO_MODE_PER_OUT);
-  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
+  DM7820_Return_Status(dm7820_status, "DM7820_Set port2 (0,2,4,6) bits to peripheral output");
 
-  //Set port's 2 (0,2,4,6) bits to PWM output pulse width modulator peripheral
+  //Set port's 2 (0,2,4,6) bits to PWM output pulse width modulator peripheral. For using as current control signal for motro controller
   dm7820_status = DM7820_StdIO_Set_Periph_Mode(board, DM7820_STDIO_PORT_2, 0x0055, DM7820_STDIO_PERIPH_PWM);
-  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Periph_Mode()");
+  DM7820_Return_Status(dm7820_status, "Set port2 (0,2,4,6) bits to PWM output");
   
+  //set Port's 2 (1,3,5,7) bits to standard output for using it as direction signal of motor controller
+  dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, 0x00AA, DM7820_STDIO_MODE_OUTPUT);
+  DM7820_Return_Status(dm7820_status, "Set Port's 2 (1,3,5,7) bits to standard output");
+
   //Set period master clock to 25 MHz clock
   dm7820_status = DM7820_PWM_Set_Period_Master(board, DM7820_PWM_MODULATOR_0, DM7820_PWM_PERIOD_MASTER_25_MHZ);
   DM7820_Return_Status(dm7820_status, "DM7820_PWM_Set_Period_Master()");
@@ -452,20 +512,97 @@ CepheusHW::CepheusHW()
   DM7820_Return_Status(dm7820_status, "DM7820_PWM_Enable()");
 
   /*************************************************************************
-   GENERAL SETUP
+                          THRUSTER CLOCK/PWM SETUP
    ************************************************************************/
-  //set Port's 2 (1,3,5,7) bits to standard output
-  dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, 0xFFAA, DM7820_STDIO_MODE_OUTPUT);
-  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_IO_Mode()");
 
+  /***Programmable clock 0 initialization***/
+
+  //Disable PRGmble clock 0 
+  dm7820_status = DM7820_PrgClk_Set_Mode(board, DM7820_PRGCLK_CLOCK_0, DM7820_PRGCLK_MODE_DISABLED);
+  DM7820_Return_Status(dm7820_status, "DM7820_PrgClk_Set_Mode()");
+  //maybe output init
+  //Set master clock to 25 MHz clock
+  dm7820_status = DM7820_PrgClk_Set_Master(board, DM7820_PRGCLK_CLOCK_0, DM7820_PRGCLK_MASTER_25_MHZ);
+  DM7820_Return_Status(dm7820_status, "DM7820_PrgClk_Set_Master()");
+  //Set clock start trigger to start immediately
+  dm7820_status = DM7820_PrgClk_Set_Start_Trigger(board, DM7820_PRGCLK_CLOCK_0, DM7820_PRGCLK_START_IMMEDIATE);
+  DM7820_Return_Status(dm7820_status, "DM7820_PrgClk_Set_Start_Trigger()");
+  //Set clock stop trigger so that clock is never stopped
+  dm7820_status = DM7820_PrgClk_Set_Stop_Trigger(board, DM7820_PRGCLK_CLOCK_0, DM7820_PRGCLK_STOP_NONE);
+  DM7820_Return_Status(dm7820_status, "DM7820_PrgClk_Set_Stop_Trigger()");
+  //Set clock period to obtain 50000 Hz frequency
+  dm7820_status = DM7820_PrgClk_Set_Period(board, DM7820_PRGCLK_CLOCK_0, 500);
+  DM7820_Return_Status(dm7820_status, "DM7820_PrgClk_Set_Period()");
+  //Put clock into continuous mode and enable it
+  dm7820_status = DM7820_PrgClk_Set_Mode(board, DM7820_PRGCLK_CLOCK_0, DM7820_PRGCLK_MODE_CONTINUOUS);
+  DM7820_Return_Status(dm7820_status, "DM7820_PrgClk_Set_Mode()");
+
+
+  /****Thruster PWM 1 Init****/
+
+  //Disable pulse width modulator 1 to put them into a known state
+  //pulse width modulator should be disabled before programming it
+  dm7820_status = DM7820_PWM_Enable(board, DM7820_PWM_MODULATOR_1, 0x00);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Disable()");
+
+  // Set port's 2 (8,9,10,11,12,13,14,15) bits to output.
+  //this bits will used as PWM output but will be selected dynamicaly in the loop depending on the thrust direction
+  dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, 0x0FF00, DM7820_STDIO_MODE_OUTPUT);
+  DM7820_Return_Status(dm7820_status, "Set port2 (8,9,10,11,12,13,14,15) bits to standard output");
+
+  //Set period master clock to programmable clock 0 with freq 500 hz
+  dm7820_status = DM7820_PWM_Set_Period_Master(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_PERIOD_MASTER_PROG_CLOCK_0);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_Period_Master()");
+
+  // Set pulse width modulator period to obtain frequency 500/freq Hz
+  period = (uint32_t)(50000/10);
+  dm7820_status = DM7820_PWM_Set_Period(board, DM7820_PWM_MODULATOR_1, period);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_Period()");
+
+  //Set width master clock to programmable clock 0 with freq 500 hz
+  dm7820_status = DM7820_PWM_Set_Width_Master(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_WIDTH_MASTER_PROG_CLOCK_0);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_Width_Master()");
+
+  // Set thrusters OFF initially
+  dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, 0);
+  DM7820_Return_Status(dm7820_status, "DM7820_SET_THRUSTER_OFF()");
+
+  //zero out all pwms
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_A, 0);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_0");
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_B, 0);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_0");
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_C, 0);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_0");
+  dm7820_status = DM7820_PWM_Set_Width(board, DM7820_PWM_MODULATOR_1, DM7820_PWM_OUTPUT_D, 0);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Set_0");
+
+  //enable PWM 1
+  dm7820_status = DM7820_PWM_Enable(board, DM7820_PWM_MODULATOR_1, 0xFF);
+  DM7820_Return_Status(dm7820_status, "DM7820_THRUSTER_PWM_Enable()");
+
+  /*************************************************************************
+                          GENERALSETUP
+   ************************************************************************/
+  count=1;
+  output_value=0;
 }
 
-CepheusHW::~CepheusHW() 
+void CepheusHW::safeClose() 
 { 
-  for(int i=0;i<4;i++) cmd[i]=0;
+  double thrust[4];
+
+  for(int i=0;i<4;i++) 
+  {
+    cmd[i]=0;
+    thrust[i]=0;
+  }
   writeMotors();  
-  ROS_WARN("Hardware safe closing");
+  setThrustPwm(thrust, 0.05, 0.95);
+
   dm7820_status = DM7820_General_Close_Board(board);
   DM7820_Return_Status(dm7820_status, "DM7820_General_Close_Board()");
+  
+  ROS_WARN("Hardware safely closed");
 }
 

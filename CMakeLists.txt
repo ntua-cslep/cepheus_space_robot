@@ -140,6 +140,8 @@ add_executable(mouse_odom_node src/mouse_odom_2.cpp)
 add_executable(phase_space_inverted_node src/phase_space_axes_swap.cpp)
 add_executable(thrusters_node src/thruster_controller.cpp)
 add_executable(cepheus_interface_node src/cepheus_interface.cpp src/cepheus_hardware.cpp src/cepheus_hardware.h)
+add_executable(FT_interface_node src/bota_FTS.cpp)
+add_executable(thrusters_interface_node src/thrusters_interface.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -151,6 +153,9 @@ target_link_libraries(mouse_odom_node  ${catkin_LIBRARIES})
 target_link_libraries(phase_space_inverted_node  ${catkin_LIBRARIES})
 target_link_libraries(thrusters_node  ${catkin_LIBRARIES} librtd_dm7820)
 target_link_libraries(cepheus_interface_node  ${catkin_LIBRARIES} librtd_dm7820)
+target_link_libraries(FT_interface_node  ${catkin_LIBRARIES})
+target_link_libraries(thrusters_interface_node  ${catkin_LIBRARIES} librtd_dm7820)
+
 
 #############
 ## Install ##

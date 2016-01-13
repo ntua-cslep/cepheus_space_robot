@@ -10,25 +10,42 @@
 
 #include <ros/ros.h>
 #include <controller_manager/controller_manager.h>
+#include <geometry_msgs/Twist.h>
 
 #include "cepheus_hardware.h"
 
 // Signal-safe flag for whether shutdown is requested
 sig_atomic_t volatile g_request_shutdown = 0;
+
+CepheusHW robot;
+
 // Replacement SIGINT handler
-void mySigIntHandler(int sig)
+void ctrl_C_Handler(int sig)
 {
   g_request_shutdown = 1;
+}
+
+void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& cmd)
+{   
+    double thrust[4];
+
+    thrust[0] = cmd->linear.x;
+    thrust[2] = cmd->linear.x;
+    thrust[1] = cmd->angular.z;
+    thrust[3] = 0;
+    robot.setThrustPwm(thrust, 0.05, 0.95);
 }
 
 int main(int argc, char** argv) 
 {
     ros::init(argc, argv, "cepheus_interface_node", ros::init_options::NoSigintHandler);
-    signal(SIGINT, mySigIntHandler);
-    ros::NodeHandle n;
+    signal(SIGINT, ctrl_C_Handler);
+    ros::NodeHandle nh;
     ros::Rate loop_rate(200.00);
+    ros::Subscriber sub = nh.subscribe("cmd_vel", 1000, cmd_vel_callback);
 
-    CepheusHW robot;
+    //ros::param::param<int>("~frequency", freq, 10);
+    
     controller_manager::ControllerManager cm(&robot);
     
     ros::AsyncSpinner spinner(1);
@@ -36,19 +53,20 @@ int main(int argc, char** argv)
 
     ros::Time prev_time = ros::Time::now();
 
-
     while(!g_request_shutdown)
     {
         ros::Time curr_time = ros::Time::now();
-        ros::Duration period = curr_time - prev_time;
+        ros::Duration time_step = curr_time - prev_time;
         prev_time = curr_time;
 
-        robot.readEncoders(period);
-        cm.update(curr_time, period);
+        robot.readEncoders(time_step);
+        cm.update(curr_time, time_step);
         robot.writeMotors();
 
 
+        ros::spinOnce();
         loop_rate.sleep();
     }
+    robot.safeClose();
     return 0;
 }

@@ -25,6 +25,8 @@ A ROS package that include all the source code that runs on Space robot's PC.
 
 - Reboot the computer and voila, it worked.
 
+- TIP: in case apt-get upgrade the kernel you have to move the driven to the new folder or just do this process again
+
 ## Mouse's
 - In the launch file of the package modify the parameters of the mouse_odom node to correspond to the correct mouses like that:
 
