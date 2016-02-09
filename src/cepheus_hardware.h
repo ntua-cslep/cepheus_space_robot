@@ -21,7 +21,7 @@
 class CepheusHW : public hardware_interface::RobotHW
 {
 public:
-  void setThrustPwm(double*, double, double);
+  void setThrustPwm(double*, double, double, double);
   void writeMotors();
   void readEncoders(ros::Duration);
   void safeClose(); 

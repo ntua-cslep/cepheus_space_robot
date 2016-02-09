@@ -27,14 +27,17 @@
                 <param name="IO_card_minor_num" value="0" />
         </node-->
 
-        <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_publisher reaction_wheel_velocity_controller" >
+        <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" args="joint_state_publisher reaction_wheel_velocity_controller" output="screen">
         </node>
 
-        <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">
                 <!--param name="tf_prefix" value="servicer" /-->
                 <!--param name="publish_frequency" value="50" -->
         </node>  
 
+        <!--node name="FT_node" pkg="cepheus_robot" type="FT_interface_node" output="screen">
+                <param name="port" value="/dev/ttyUSB0" />
+        </node-->  
 
 
 </launch>

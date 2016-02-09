@@ -4,6 +4,7 @@
 #include <linux/input.h>
 #include <fcntl.h>
 #include <math.h>
+#include <signal.h>
 
 #include "ros/ros.h"
 #include "geometry_msgs/Vector3Stamped.h"
@@ -19,6 +20,14 @@
 #define L 0
 #define R 1
 #define F 2
+
+// Signal-safe flag for whether shutdown is requested
+sig_atomic_t volatile g_request_shutdown = 0;
+// Replacement SIGINT handler
+void ctrl_C_Handler(int sig)
+{
+  g_request_shutdown = 1;
+}
 
 class MouseOdom{
 public:
@@ -45,9 +54,12 @@ public:
     }
   }
 
-  void closeDevice()
+  bool closeDevice()
   {
-    close(this->fd);
+    if( close(this->fd)  == -1) 
+      return 1;
+    else
+      return 0;
   }
 
   bool readRelativeMove()
@@ -104,7 +116,8 @@ private:
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "mouse_odom_node");
+    ros::init(argc, argv, "mouse_odom_node", ros::init_options::NoSigintHandler);
+    signal(SIGINT, ctrl_C_Handler);
     ros::NodeHandle node;
     ros::Rate loop_rate(1000);
 
@@ -192,7 +205,7 @@ int main(int argc, char **argv)
     double scale = cpi/0.0254; //31496.06 : devide counts with this to take meters
 
 
-    while(ros::ok())
+    while(!g_request_shutdown)
     {
       left_mouse.readRelativeMove();
       right_mouse.readRelativeMove();
@@ -246,7 +259,11 @@ int main(int argc, char **argv)
       ros::spinOnce();
       loop_rate.sleep();
     }
-    left_mouse.closeDevice();
-    right_mouse.closeDevice();
+    if(left_mouse.closeDevice())  
+      ROS_WARN("left mouse couldn't close normally");
+    if(right_mouse.closeDevice())
+      ROS_WARN("left mouse couldn't close normally");
+
+    ROS_WARN("Mouse devices Closed");
     return 0;
 }

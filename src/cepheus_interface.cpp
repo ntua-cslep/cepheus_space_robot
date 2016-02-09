@@ -14,11 +14,11 @@
 
 #include "cepheus_hardware.h"
 
-// Signal-safe flag for whether shutdown is requested
-sig_atomic_t volatile g_request_shutdown = 0;
 
 CepheusHW robot;
 
+// Signal-safe flag for whether shutdown is requested
+sig_atomic_t volatile g_request_shutdown = 0;
 // Replacement SIGINT handler
 void ctrl_C_Handler(int sig)
 {
@@ -33,7 +33,7 @@ void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& cmd)
     thrust[2] = cmd->linear.x;
     thrust[1] = cmd->angular.z;
     thrust[3] = 0;
-    robot.setThrustPwm(thrust, 0.05, 0.95);
+    robot.setThrustPwm(thrust, 0.87, 0.05, 0.95);
 }
 
 int main(int argc, char** argv) 

@@ -29,9 +29,9 @@ int main(int argc, char** argv)
     ros::Publisher FT_pub = n.advertise<geometry_msgs::Wrench>("FT", 1000);
     geometry_msgs::Wrench ft_sensor;
 
-    //int port, baud;
+    std::string port;
 
-    //ros::param::param<ros::String>("~port", port, "/dev/ttyUSB0");
+    ros::param::param<std::string>("~port", port, "/dev/ttyUSB0");
 
     int USB = open("/dev/ttyUSB0", O_RDWR | O_NONBLOCK | O_NDELAY);
     if (USB == -1)
@@ -77,59 +77,54 @@ int main(int argc, char** argv)
     }
 
     char buf;
-    std::string line;
     int count =0;
     int num=1;
-    int x,y,z,u,v,w;
+    int data[6]; 
     std::string::size_type sz;   // alias of size_t
 
     while(ros::ok())
-    {          
+    {   
+        std::string line;
+        num=1;       
         while(num>0)
         {
-        num = read( USB, &buf , 1);
-            switch(buf)
-            {
-                case '\r':
-                    break;
-                case '\n':
-                    break;
-                default:
-                    line+=buf;
-            }
+            num = read( USB, &buf , 1);
+            if(buf=='\n')
+                break;
+            // else if (buf=='\n')
+            //     break;
+            else
+                line+=buf;
         }
-
-        if (line=="A") count = 0;
-        else
+        if (line != "") 
         {
-            switch(count)
+            if (line=="A")
+                count = 0;
+            else
             {
-                case 0:
-                    x = std::atoi (line.c_str());
-                case 1:
-                    y = std::atoi (line.c_str());
-                case 2:
-                    z = std::atoi (line.c_str());
-                case 3:
-                    u = std::atoi (line.c_str());
-                case 4:
-                    v = std::atoi (line.c_str());
-                case 5:
-                    w = std::atoi (line.c_str());
+                if (count<=5) 
+                {
+                    data[count] = std::atoi (line.c_str());
+                    count++;
+                }
+                else
+                {
+                    ROS_ERROR("bad communication");
+                }
             }
-            count++;
         }
-        ROS_INFO("x %d", x);
+    
+        // ROS_INFO("x: %d, y: %d, z: %d, u: %d, v: %d, w: %d", data[0], data[1], data[2], data[3], data[4], data[5]);
 
-        ft_sensor.force.x =(double)x *0.06;
-        ft_sensor.force.y =(double)y *0.06;
-        ft_sensor.force.z =(double)z *0.06;
-        ft_sensor.torque.x=(double)u *0.06;
-        ft_sensor.torque.y=(double)v *0.06;
-        ft_sensor.torque.z=(double)w *0.06;
+        ft_sensor.force.x =(double)data[0] *0.01;
+        ft_sensor.force.y =(double)data[1] *0.01;
+        ft_sensor.force.z =(double)data[2] *0.01;
+        ft_sensor.torque.x=(double)data[3] *0.01;
+        ft_sensor.torque.y=(double)data[4] *0.01;
+        ft_sensor.torque.z=(double)data[5] *0.01;
 
-        //FT_pub.publish(ft_sensor);
-        //ros::spinOnce();
+        FT_pub.publish(ft_sensor);
+        ros::spinOnce();
         loop_rate.sleep();
     }
     close(USB);

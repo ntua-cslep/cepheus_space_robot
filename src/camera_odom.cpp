@@ -32,7 +32,7 @@
 // Signal-safe flag for whether shutdown is requested
 sig_atomic_t volatile g_request_shutdown = 0;
 // Replacement SIGINT handler
-void mySigIntHandler(int sig)
+void ctrl_C_Handler(int sig)
 {
   g_request_shutdown = 1;
 }
@@ -45,10 +45,10 @@ int main(int argc, char **argv)
      ********************************************************************************************/
 
     ros::init(argc, argv, "udp_server", ros::init_options::NoSigintHandler);
-    signal(SIGINT, mySigIntHandler);
+    signal(SIGINT, ctrl_C_Handler);
     ros::NodeHandle nh;
     ros::Publisher pub_odom = nh.advertise<nav_msgs::Odometry>("camera/odom", 1000);
-    ros::Rate loop_rate(500); //dont forget to add looprate sleep in the end
+    ros::Rate loop_rate(1000); //dont forget to add looprate sleep in the end
     nav_msgs::Odometry odom;
     short x,y,th,u,v,w,t;
     int rob_id;
@@ -111,7 +111,6 @@ int main(int argc, char **argv)
         ros::Duration(5.0).sleep();
     }
 
-
     while(!g_request_shutdown)
     {
         /**********************************************************************************
@@ -119,7 +118,9 @@ int main(int argc, char **argv)
                                         wait to receive camera data                               
         ***********************************************************************************/
         if ((recv_len = recvfrom(s, &buf, BUFLEN, 0, (struct sockaddr *)&si_other, &slen)) == -1)
+        {
             ROS_WARN("Can't receive from UDP socket");
+        }
 
         /**********************************************************************************
                                   BLOCKING BLOCKING BLOCKING BLOCKING                         
@@ -173,7 +174,7 @@ int main(int argc, char **argv)
                 
                 pub_odom.publish(odom);
 
-            //transformation broadcast
+                //transformation broadcast
                 map_to_base.setOrigin(tf::Vector3((double)(x *0.0001), (double)(y *0.0001), 0.0));
                 tf::Quaternion q;
                 q.setRPY(0, 0, (double)(th *0.0001));
@@ -181,20 +182,23 @@ int main(int argc, char **argv)
                 map_to_odom.mult(map_to_base, base_to_odom); 
 
                 broadcaster.sendTransform(tf::StampedTransform(map_to_odom, camera_stamp, "map", "odom"));
-
             }
-            else ROS_INFO("different Robot id recieved. ID: %d", (int)buf[1]);
+            else
+            {
+                ROS_INFO("different Robot id recieved. ID: %d", (int)buf[1]);
+            }
         }
-             
 
         //print details of the client/peer and the data received
         //ROS_INFO("Received packet from %s:%d", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
         //ROS_INFO("Receivied data: Rob_ID: %d x:%d, y:%d, th:%d, u:%d, v:%d, w:%d, t:%d\n" , buf[1], x, y, th, u, v, w, t);
 
         ros::spinOnce();
-        //loop_rate.sleep();//consider removing as we have a blocking call in the loop
-    }
-    ROS_WARN("Closing udp port: %d of camera node", port);
+        //loop_rate.sleep();//consider removing as we have a blocking call in the loop       
+    } 
+
+    //will never run this because recvfrom is blocking functiuon
     close(s);
+    ROS_WARN("udp port: %d of camera node Closed", port);
     return 0;
 }

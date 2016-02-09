@@ -16,45 +16,63 @@
 #include "cepheus_hardware.h"
 #include <math.h>
 
-void CepheusHW::setThrustPwm(double *thrust, double min_thrust, double max_thrust)
+void CepheusHW::setThrustPwm(double *thrust, double max_thrust, double min_duty, double max_duty)
 {
   double duty[4];
   uint16_t dir[4];
+  uint16_t port_2;
 
   for(int i=0; i<4; i++)
   {
-    if (thrust[i] > min_thrust && thrust[i] < max_thrust)
+    // Calculate the correct duty cycle 
+    // and the pin to output the pulse
+    if(thrust[i] >= 0)
     {
-      duty[i] = thrust[i]/max_thrust;
+      if (thrust[i] < max_thrust)
+        duty[i] = thrust[i]/max_thrust;
+      else
+        duty[i] = 1;
+      //select the non-inverted pin
       dir[i] = 1;
-    }
-    else if (thrust[i] >= max_thrust)
-    {
-      duty[i] = 1;
-      dir[i] = 1;
-    }
-    else if (thrust[i] < -min_thrust && thrust[i] > -max_thrust)
-    {
-      duty[i] = 1 + (thrust[i]/max_thrust);
-      dir[i] = 2;
-    }
-    else if (thrust[i] <= -max_thrust)
-    {
-      duty[i] = 1;
-      dir[i] = 2;
     }
     else
     {
-      duty[i] = 0;
-      dir[i] = 0;
+      //0 is  the max duty for inverted   
+      if (thrust[i] > -max_thrust)
+        duty[i] = 1 + (thrust[i]/max_thrust);
+      else
+        duty[i] = 0;
+      //select the inverted pin
+      dir[i] = 2;
     }
+
+    //ensure that PWM is inside the limit 0-1 and has deadband areas removed
+    if (dir[i] == 1)
+    {
+      if (duty[i] > max_duty) 
+        duty[i]=1;
+      else if (duty[i] < min_duty) 
+        duty[i]=0;
+    }
+    else if (dir[i] == 2)
+    {
+      if ( (1 - duty[i]) > max_duty )
+        duty[i]=0;
+      else if ( (1 - duty[i]) < min_duty ) 
+        duty[i]=1;
+    }
+    else
+      ROS_INFO("PWM thrust calculation error");
   }
 
   //Seting which pin of the inverted and non inverted pin of a PWM will be used
   uint16_t output = dir[0]<<0 | dir[1]<<2 | dir[2]<<4 | dir[3]<<6;
 
-  dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, 0);
-  DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
+  // dm7820_status = DM7820_StdIO_Get_Input(board, DM7820_STDIO_PORT_2, &port_2);
+  // DM7820_Return_Status(dm7820_status, "DM7820_StdIO_get_port_state");
+  // ROS_INFO("port 2: %x", port_2);
+  //dm7820_status = DM7820_StdIO_Set_Output(board, DM7820_STDIO_PORT_2, 0);
+  //DM7820_Return_Status(dm7820_status, "DM7820_StdIO_Set_Output()");
 
   // Set port's 2 // bits to peripheral output
   dm7820_status = DM7820_StdIO_Set_IO_Mode(board, DM7820_STDIO_PORT_2, (output<<8), DM7820_STDIO_MODE_PER_OUT);
@@ -87,7 +105,7 @@ void CepheusHW::writeMotors()
   for (int i=0; i<4; i++)
   {
 
-    double current = (cmd[i]/0.0538) + ((1.72*vel[i])/500);// + (0.12*MAX_CURRENT); //cmd in Nm + trives + starting Current
+    double current = (cmd[i]/0.0538);
     
     //saturate to max current
     if (current >= MAX_CURRENT) current = MAX_CURRENT;
@@ -282,7 +300,7 @@ void CepheusHW::readEncoders(ros::Duration dt)
 
 
 
-  //ROS_INFO("VEL: 1: %f, 1_f: %f, 2: %f, 3: %f, 4: %f", vel[0], filtered, vel[1], vel[2], vel[3]);
+  // ROS_INFO("VEL: 1: %f, new: %f", vel[0], vel_new[0]);
 
 }
 
@@ -356,7 +374,7 @@ CepheusHW::CepheusHW()
   dm7820_status = DM7820_IncEnc_Configure(board,
             DM7820_INCENC_ENCODER_0,
             phase_filter,
-            DM7820_INCENC_INPUT_SINGLE_ENDED,
+            DM7820_INCENC_INPUT_DIFFERENTIAL,
             0x00,
             DM7820_INCENC_CHANNEL_INDEPENDENT,
             0x00);
@@ -390,7 +408,7 @@ CepheusHW::CepheusHW()
   dm7820_status = DM7820_IncEnc_Configure(board,
             DM7820_INCENC_ENCODER_1,
             phase_filter,
-            DM7820_INCENC_INPUT_SINGLE_ENDED,
+            DM7820_INCENC_INPUT_DIFFERENTIAL,
             0x00,
             DM7820_INCENC_CHANNEL_INDEPENDENT,
             0x00);
@@ -598,7 +616,7 @@ void CepheusHW::safeClose()
     thrust[i]=0;
   }
   writeMotors();  
-  setThrustPwm(thrust, 0.05, 0.95);
+  setThrustPwm(thrust, 0.87, 0.05, 0.95);
 
   dm7820_status = DM7820_General_Close_Board(board);
   DM7820_Return_Status(dm7820_status, "DM7820_General_Close_Board()");
