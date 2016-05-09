@@ -54,6 +54,8 @@ int main(int argc, char **argv)
     int rob_id;
     ros::param::param<int>("~robot_id", rob_id, ROBOT_ID);
     ROS_INFO("Reading odometry for Robot with ID: %d", rob_id);
+    std::string frame;
+    ros::param::param<std::string>("~frame_id", frame, "base_link");
 
     //transforms
     tf::Transform map_to_base;
@@ -104,7 +106,7 @@ int main(int argc, char **argv)
     //wait for the first odom to base transformation up to 5sec
     try{
         ROS_WARN("Camera node wait for first odom to base_link Transformation");
-        listener.waitForTransform("base_link", "odom", ros::Time::now(), ros::Duration(5.0));
+        listener.waitForTransform(frame, "odom", ros::Time::now(), ros::Duration(5.0));
     }
     catch (tf::TransformException ex){
         ROS_ERROR("%s",ex.what());
@@ -148,7 +150,7 @@ int main(int argc, char **argv)
         
                 //read odom transformation at the time the foto is taken (past time)
                 try{
-                  listener.lookupTransform("base_link", "odom", camera_stamp, base_to_odom);
+                  listener.lookupTransform(frame, "odom", camera_stamp, base_to_odom);
                 }
                 catch (tf::TransformException ex){
                 ROS_ERROR("%s",ex.what());
@@ -159,7 +161,7 @@ int main(int argc, char **argv)
                 //header
                 odom.header.stamp = camera_stamp;//as soon as possible minus the latency
                 odom.header.frame_id = "map";//reference frame for position
-                odom.child_frame_id  = "base_link";//reference frame for velocity         
+                odom.child_frame_id  = frame;//reference frame for velocity         
                 //set position
                 odom.pose.pose.position.x = (double)(x *0.0001);
                 odom.pose.pose.position.y = (double)(y *0.0001);
@@ -183,10 +185,10 @@ int main(int argc, char **argv)
 
                 broadcaster.sendTransform(tf::StampedTransform(map_to_odom, camera_stamp, "map", "odom"));
             }
-            else
-            {
-                ROS_INFO("different Robot id recieved. ID: %d", (int)buf[1]);
-            }
+            // else
+            // {
+            //     ROS_INFO("different Robot id recieved. ID: %d", (int)buf[1]);
+            // }
         }
 
         //print details of the client/peer and the data received

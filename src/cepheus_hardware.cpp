@@ -16,7 +16,7 @@
 #include "cepheus_hardware.h"
 #include <math.h>
 
-void CepheusHW::setThrustPwm(double *thrust, double max_thrust, double min_duty, double max_duty)
+void CepheusHW::setThrustPwm(double *thrust, double min_duty, double max_duty)
 {
   double duty[4];
   uint16_t dir[4];
@@ -104,25 +104,25 @@ void CepheusHW::writeMotors()
 
   for (int i=0; i<4; i++)
   {
-
-    double current = (cmd[i]/0.0538);
-    
+    //ROS_INFO("max_cuurent[%d]=%f", i, max_current[i]);
+    double current = (cmd[i]/0.0538);//cmd is in Nm
     //saturate to max current
-    if (current >= MAX_CURRENT) current = MAX_CURRENT;
-    if (current <=-MAX_CURRENT) current =-MAX_CURRENT;
+    if (current >= max_current[i]) current = max_current[i];
+    if (current <=-max_current[i]) current =-max_current[i];
     //ROS_INFO("current %f", current);
 
-    eff[i] = current*0.0538;
+    eff[i] = current*0.0538;//eff is in Nm
+
 
     if (current >= 0.0) 
     {
       dir[i] = 0;
-      width[i] = (uint16_t)(current*(PWM_DIVIDER/MAX_CURRENT));
+      width[i] = (uint16_t)(current*(PWM_DIVIDER/max_current[i]));
     }
     else
     {
       dir[i] = 1;
-      width[i] = (uint16_t)(-current*(PWM_DIVIDER/MAX_CURRENT));
+      width[i] = (uint16_t)(-current*(PWM_DIVIDER/max_current[i]));
     }
   }
 
@@ -145,7 +145,7 @@ void CepheusHW::writeMotors()
 
 void CepheusHW::readEncoders(ros::Duration dt)
 {
-// read robots joint state
+  // read robots joint state
   //Read encoder 0 channel A value
   dm7820_status = DM7820_IncEnc_Get_Independent_Value(board, DM7820_INCENC_ENCODER_0, 
     DM7820_INCENC_CHANNEL_A,
@@ -170,7 +170,7 @@ void CepheusHW::readEncoders(ros::Duration dt)
     &encoder_4_val);
   DM7820_Return_Status(dm7820_status, "DM7820_IncEnc_Get_Independent_Value()");
 
-//handle overflow
+  //handle overflow
   // Channel 0A Handling of encoder value overflow
   dm7820_status = DM7820_IncEnc_Get_Status(board, DM7820_INCENC_ENCODER_0, DM7820_INCENC_STATUS_CHANNEL_A_POSITIVE_ROLLOVER, &encoder_status);
   DM7820_Return_Status(dm7820_status, "Read positive overflow channel 0A");
@@ -243,7 +243,7 @@ void CepheusHW::readEncoders(ros::Duration dt)
     error(EXIT_FAILURE, 0, "ERROR: Channel 1A negative overflow status not cleared");
 
 
-// Channel 1B Handling of encoder value overflow
+  // Channel 1B Handling of encoder value overflow
   dm7820_status = DM7820_IncEnc_Get_Status(board, DM7820_INCENC_ENCODER_1, DM7820_INCENC_STATUS_CHANNEL_B_POSITIVE_ROLLOVER, &encoder_status);
   DM7820_Return_Status(dm7820_status, "Read positive overflow channel 1B");
   if (encoder_status) 
@@ -297,13 +297,28 @@ void CepheusHW::readEncoders(ros::Duration dt)
 
   }
 
-
-
-
   // ROS_INFO("VEL: 1: %f, new: %f", vel[0], vel_new[0]);
-
 }
 
+void CepheusHW::setParam(double max_cur, double f_thrust) 
+{
+  this->max_thrust = f_thrust;
+  for(int i; i<4; i++) {
+    this->max_current[i] = max_cur;
+    ROS_INFO("max_current[%d]=%f", i, max_current[i] );
+  }
+  ROS_INFO("max_currents Setted");
+}
+
+void CepheusHW::setCmd(int idx, double _cmd)
+{
+  cmd[idx] = _cmd;
+}
+
+double CepheusHW::getVel(int idx)
+{
+  return vel[idx];
+}
 
 CepheusHW::CepheusHW() 
 { 
@@ -332,7 +347,7 @@ CepheusHW::CepheusHW()
   DM7820_Return_Status(dm7820_status, "Opening Device 0");
 
 
-//INCREMENTAL ENCODERS 0 & 1
+  //INCREMENTAL ENCODERS 0 & 1
   //disable encoders for safety
   dm7820_status = DM7820_IncEnc_Enable(board, DM7820_INCENC_ENCODER_0, 0x00); 
   DM7820_Return_Status(dm7820_status, "DM7820_IncEnc_Enable()");
@@ -386,7 +401,7 @@ CepheusHW::CepheusHW()
                   DM7820_INCENC_CHANNEL_A,
                   encoder_init_value);
   DM7820_Return_Status(dm7820_status,
-           "DM7820_IncEnc_Set_Independent_Value()");
+           "DM7820_IncEnc_Set_Independent_Value_0_A");
 
   //Set initial value for channel B counter
   dm7820_status = DM7820_IncEnc_Set_Independent_Value(board,
@@ -394,7 +409,7 @@ CepheusHW::CepheusHW()
                   DM7820_INCENC_CHANNEL_B,
                   encoder_init_value);
   DM7820_Return_Status(dm7820_status,
-           "DM7820_IncEnc_Set_Independent_Value()");
+           "DM7820_IncEnc_Set_Independent_Value_0_B");
 
 
 
@@ -419,14 +434,14 @@ CepheusHW::CepheusHW()
                   DM7820_INCENC_ENCODER_1,
                   DM7820_INCENC_CHANNEL_A,
                   encoder_init_value);
-  DM7820_Return_Status(dm7820_status, "DM7820_IncEnc_Set_Independent_Value()");
+  DM7820_Return_Status(dm7820_status, "DM7820_IncEnc_Set_Independent_Value_1_A");
 
   //Set initial value for channel A counter
   dm7820_status = DM7820_IncEnc_Set_Independent_Value(board,
                   DM7820_INCENC_ENCODER_1,
                   DM7820_INCENC_CHANNEL_B,
                   encoder_init_value);
-  DM7820_Return_Status(dm7820_status, "DM7820_IncEnc_Set_Independent_Value()");
+  DM7820_Return_Status(dm7820_status, "DM7820_IncEnc_Set_Independent_Value_1_B");
 
   //incremental encoder 0 enable again
   dm7820_status = DM7820_IncEnc_Enable(board, DM7820_INCENC_ENCODER_0, 0xFF);
@@ -616,7 +631,7 @@ void CepheusHW::safeClose()
     thrust[i]=0;
   }
   writeMotors();  
-  setThrustPwm(thrust, 0.87, 0.05, 0.95);
+  setThrustPwm(thrust, 0.05, 0.95);
 
   dm7820_status = DM7820_General_Close_Board(board);
   DM7820_Return_Status(dm7820_status, "DM7820_General_Close_Board()");

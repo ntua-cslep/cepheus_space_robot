@@ -14,12 +14,16 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
+#include <Eigen/Eigen>
+#include <Eigen/Dense>
+using namespace Eigen;
 
 #include <kdl_parser/kdl_parser.hpp>
 
 #define L 0
 #define R 1
 #define F 2
+#define FIR_LENGTH 15 
 
 // Signal-safe flag for whether shutdown is requested
 sig_atomic_t volatile g_request_shutdown = 0;
@@ -29,13 +33,70 @@ void ctrl_C_Handler(int sig)
   g_request_shutdown = 1;
 }
 
+class DigitalFilter {
+public:
+    DigitalFilter(int order, double * xGains, double init_value)
+    {   
+        len = order + 1;
+        x_gain.resize(len);
+        x.resize(len);
+        y.resize(len);
+
+        for(int i=0;i<len;i++)
+        {
+            x_gain(i) = xGains[i];
+            x(i) = init_value;
+            y(i) = init_value;
+        }
+        // ROS_INFO_STREAM("Filter initialized with:");
+        // ROS_INFO_STREAM("gains\n" << x_gain);
+        // ROS_INFO_STREAM("x\n" << x);
+        // ROS_INFO_STREAM("y\n" << y);
+    }
+
+    DigitalFilter(int order, double init_value)
+    {
+        len = order + 1;
+        x_gain.resize(len);
+        x.resize(len);
+        y.resize(len);
+
+        for(int i=0;i<len;i++)
+        {
+            x_gain(i) = 1.0/(double)len;
+            x(i) = init_value;
+            y(i) = init_value;
+        }
+        // ROS_INFO_STREAM("Simple Filter initialized with:");
+        // ROS_INFO_STREAM("gains\n" << x_gain);
+        // ROS_INFO_STREAM("x\n" << x);
+        // ROS_INFO_STREAM("y\n" << y);
+    }
+
+    double filter(double newVal)
+    {
+        for(int i=(len-1); i>0; i--)//will run len-1 times because the last value will set after
+        {
+            x(i) = x(i-1);
+            y(i) = y(i-1);
+        }
+        x(0) = newVal;
+        y(0) = x * x_gain;
+        return y(0);
+    }
+private:
+    int len;
+    VectorXd x_gain;
+    RowVectorXd x, y;
+};
+
 class MouseOdom{
 public:
-  MouseOdom(std::string device, std::string frame)
+  MouseOdom(std::string device, std::string _frame)
   {
     this->ready = 0;
     this->dev = device;
-    this->data.header.frame_id = frame;
+    this->data.header.frame_id = _frame;
     //openDevice();
   }
 
@@ -43,7 +104,7 @@ public:
   {
     if((this->fd = open(this->dev.c_str(), O_RDONLY | O_NONBLOCK )) == -1) 
     {
-      ROS_ERROR("Mevice %s can't open. The device may not exist or you dont have the permission to access it \nIf exist try to run ros as root or this command: sudo chmod a+rw %s",this->dev.c_str(),this->dev.c_str());
+      ROS_ERROR("Device %s can't open. The device may not exist or you dont have the permission to access it \nIf exist try to run ros as root or this command: sudo chmod a+rw %s",this->dev.c_str(),this->dev.c_str());
       exit(EXIT_FAILURE);
       return 1;
     }
@@ -128,56 +189,18 @@ int main(int argc, char **argv)
     std::string frame[2];
     ros::param::param<std::string>("~left_frame_id", frame[L], "left_mouse");
     ros::param::param<std::string>("~right_frame_id", frame[R], "right_mouse");
-    float cpi;
-    ros::param::param<float>("~counts_per_meter", cpi, 800);
+    double cpi;
+    ros::param::param<double>("~counts_per_meter", cpi, 800);
+    std::string frame_id;
+    ros::param::param<std::string>("~frame_id", frame_id, "base_link");
     //publishing odom
     ros::Publisher odom_pub = node.advertise<nav_msgs::Odometry>("mouse/odom", 1000);
-
-
-    // //transforms
-    // tf::StampedTransform base_to_front_mouse;
-    // tf::StampedTransform base_to_left_mouse;
-
-    // tf::TransformListener f_listener, l_listener;
-    // ros::Duration(5.0).sleep();
-
-    // try{
-    //   f_listener.lookupTransform("base_link", "front_mouse", ros::Time(0), base_to_front_mouse);
-    // }
-    // catch (tf::TransformException ex){
-    //   ROS_ERROR("%s",ex.what());
-    //   ros::Duration(1.0).sleep();
-    // }
-
-    // try{
-    //   l_listener.lookupTransform("base_link", "left_mouse", ros::Time(0), base_to_left_mouse);
-    // }
-    // catch (tf::TransformException ex){
-    //   ROS_ERROR("%s",ex.what());
-    //   ros::Duration(1.0).sleep();
-    // }
-
-    // tf::Vector3 front_mouse_vector = base_to_front_mouse.getOrigin();
-    // tf::Vector3  left_mouse_vector = base_to_left_mouse.getOrigin();
-
-    // ROS_WARN("origin: x %d, y %d", (int)(front_mouse_vector.x()*100), (int)(front_mouse_vector.y()*100));
-    // ROS_WARN("origin: x %d, y %d", (int)(left_mouse_vector.x()*100), (int)(left_mouse_vector.y()*100));
-
-    // //KDL PARSER
-    // KDL::Tree my_tree;
-    // std::string robot_desc_string;
-    // ros::param::param<std::string>("robot_description", robot_desc_string, "string()");
-    // if (!kdl_parser::treeFromString(robot_desc_string, my_tree))
-    // {
-    //   ROS_ERROR("Failed to construct kdl tree");
-    //   return false;
-    // }
     
     //transformations
     static tf2_ros::TransformBroadcaster odom_broadcaster;
     geometry_msgs::TransformStamped odom_to_base;
     odom_to_base.header.frame_id = "odom";
-    odom_to_base.child_frame_id = "base_link";
+    odom_to_base.child_frame_id = frame_id;
     odom_to_base.header.stamp = ros::Time::now();
     odom_to_base.transform.translation.x = 0;
     odom_to_base.transform.translation.y = 0;
@@ -194,11 +217,13 @@ int main(int argc, char **argv)
     geometry_msgs::Vector3Stamped data, data2;
     nav_msgs::Odometry odom;
     odom.header.frame_id = "odom";
-    odom.child_frame_id = "base_link";
+    odom.child_frame_id = frame_id;
     odom.pose.pose.position.x = 0.0;
     odom.pose.pose.position.y = 0.0;
     double th =0, th1 =0, th2 =0;
     double dx, dy, dth;
+    double vel_new[2], vel[2];
+    double vel_fir[FIR_LENGTH][2];
     ros::Duration dt;
     ros::Time data_stamp = ros::Time::now() - ros::Duration(1);
     double r1=0, r2=0;
@@ -238,8 +263,26 @@ int main(int argc, char **argv)
       
       odom.pose.pose.position.x += dx;
       odom.pose.pose.position.y += dy;
-      odom.twist.twist.linear.x = dx/dt.toSec();
-      odom.twist.twist.linear.y = dy/dt.toSec();
+      //speed averaging
+      vel_new[0] = dx/dt.toSec();
+      vel_new[1] = dy/dt.toSec();
+
+      for(int i=0; i<2; i++)
+      {
+        for (int j=0; j<(FIR_LENGTH-1); j++){
+          vel_fir[j][i] = vel_fir[j+1][i]; 
+        }
+        vel_fir[FIR_LENGTH-1][i] = vel_new[i];
+
+        double filtered=0;
+        for (int j=0; j<FIR_LENGTH; j++){
+          filtered += vel_fir[j][i];
+        }
+        vel[i] = filtered/FIR_LENGTH;
+      }
+
+      odom.twist.twist.linear.x = vel[0];//dx/dt.toSec();
+      odom.twist.twist.linear.y = vel[1];//dy/dt.toSec();
 
       geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
       odom.pose.pose.orientation = odom_quat;

@@ -13,17 +13,19 @@
 #include <hardware_interface/robot_hw.h>
 #include <dm7820_library.h>
 
-#define FIR_LENGTH 15 
+#define FIR_LENGTH 2 
 #define PWM_DIVIDER 25000
-#define MAX_CURRENT 1.72//A
 
 
 class CepheusHW : public hardware_interface::RobotHW
 {
 public:
-  void setThrustPwm(double*, double, double, double);
+  void setThrustPwm(double*, double, double);
   void writeMotors();
   void readEncoders(ros::Duration);
+  void setParam(double, double);
+  void setCmd(int,double);
+  double getVel(int);
   void safeClose(); 
   CepheusHW(); 
  
@@ -31,6 +33,10 @@ private:
 /***controller manager interface***/
   hardware_interface::JointStateInterface jnt_state_interface;
   hardware_interface::EffortJointInterface jnt_eff_interface;
+
+/*****Motors parameters*********/
+  double max_current[4];
+  double max_thrust;
 
 /******motors********/
   double cmd[4];
@@ -56,7 +62,6 @@ private:
   int encoder_4;
 
 /******thrusters********/
-  double thrust[4];
   uint32_t period;
 
 /*******IO board********/

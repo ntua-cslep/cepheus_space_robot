@@ -7,6 +7,7 @@ project(cepheus_robot)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  std_srvs
   nav_msgs
   geometry_msgs
   sensor_msgs
@@ -19,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   hardware_interface
   controller_interface
   controller_manager
+  angles
 )
 
 ## System dependencies are found with CMake's conventions
@@ -142,6 +144,8 @@ add_executable(thrusters_node src/thruster_controller.cpp)
 add_executable(cepheus_interface_node src/cepheus_interface.cpp src/cepheus_hardware.cpp src/cepheus_hardware.h)
 add_executable(FT_interface_node src/bota_FTS.cpp)
 add_executable(thrusters_interface_node src/thrusters_interface.cpp)
+add_executable(base_controller_node src/base_controller.cpp)
+add_executable(base_planner_node src/base_planner.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -155,6 +159,8 @@ target_link_libraries(thrusters_node  ${catkin_LIBRARIES} librtd_dm7820)
 target_link_libraries(cepheus_interface_node  ${catkin_LIBRARIES} librtd_dm7820)
 target_link_libraries(FT_interface_node  ${catkin_LIBRARIES})
 target_link_libraries(thrusters_interface_node  ${catkin_LIBRARIES} librtd_dm7820)
+target_link_libraries(base_controller_node  ${catkin_LIBRARIES} )
+target_link_libraries(base_planner_node  ${catkin_LIBRARIES} )
 
 
 #############
