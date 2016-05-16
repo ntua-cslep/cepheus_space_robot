@@ -33,7 +33,7 @@ geometry_msgs::Vector3 cmd_acc;
 
 ros::Time pose_stamp;
 
-bool controller_enabled=true;
+bool controller_enabled=false;
 bool first_time=true;
 
 bool controllerControl(std_srvs::SetBool::Request & req, std_srvs::SetBool::Response & res)

@@ -90,11 +90,21 @@ int main(int argc, char** argv)
         robot.writeMotors();
 
         //saturate acceleration og reaction wheel
-        if (rw_torque > rw_max_torque) {
-            rw_torque = rw_max_torque;
+        double rw_available_torque;
+        double rw_real_vel = robot.getVel(0);
+        if(fabs(rw_real_vel)<=0.01) {
+            rw_available_torque = rw_max_torque;
         }
-        else if (rw_torque < -rw_max_torque) {
-            rw_torque = -rw_max_torque;
+        else {
+            rw_available_torque = rw_max_power/fabs(rw_real_vel);
+        }
+        
+        // rw_available_torque = rw_max_torque;
+        if (rw_torque > rw_available_torque) {
+            rw_torque = rw_available_torque;
+        }
+        else if (rw_torque < -rw_available_torque) {
+            rw_torque = -rw_available_torque;
         }
         //calculate velocity cmd for reaction wheel
         double rw_cmd_vel;
@@ -105,6 +115,7 @@ int main(int argc, char** argv)
         }
         rw_cur_vel = rw_cmd_vel;
 
+        // need rifinement
         std_msgs::Float64 cmd_rw_vel;
         cmd_rw_vel.data = -1*rw_cmd_vel;
         torque_pub.publish(cmd_rw_vel);

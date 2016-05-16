@@ -32,6 +32,19 @@ A ROS package that include all the source code that runs on Space robot's PC.
 
     _/dev/input/by-path/ "correct mouse name"_
 
+## Wifi Adapter T4UH 5G
+- Just run the following commands in order to install. If you upgrade the kernel you must run the last command again.
+
+	```mkdir ~/Downloads/t4uh_drivers```
+	```cd ~/Downloads/t4uh_drivers```
+	```sudo apt-get install git```
+	```git clone https://github.com/abperiasamy/rtl8812AU_8821AU_linux.git```
+	```cd rtl8812AU_8821AU_linux/```
+	```sudo make clean```
+	```sudo make```
+	```sudo make install```
+	```sudo modprobe -a 8812au```
+
 #Instructions
 ## In every boot run the following commands to launch robot:     
 - ```cd ~/catkin_ws```
