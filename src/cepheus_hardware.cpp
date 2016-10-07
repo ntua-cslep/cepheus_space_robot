@@ -16,6 +16,7 @@
 #include "cepheus_hardware.h"
 #include <math.h>
 
+
 void CepheusHW::setThrustPwm(double *thrust, double min_duty, double max_duty)
 {
   double duty[4];

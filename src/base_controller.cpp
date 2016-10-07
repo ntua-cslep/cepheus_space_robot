@@ -16,10 +16,13 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
 #include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Vector3Stamped.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <std_msgs/Float64.h>
 #include <std_srvs/SetBool.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
 
 using namespace Eigen;
 using namespace angles;
@@ -27,11 +30,14 @@ using namespace geometry_msgs;
 
 geometry_msgs::Vector3 real_pos;
 geometry_msgs::Vector3 goal_pos;
+
 geometry_msgs::Vector3 cmd_pos;
 geometry_msgs::Vector3 cmd_vel;
 geometry_msgs::Vector3 cmd_acc;
 
 ros::Time pose_stamp;
+
+tf::TransformListener* listener;
 
 bool controller_enabled=false;
 bool first_time=true;
@@ -212,14 +218,14 @@ public:
 
         rw_present = false;
 
-        Kp << 1.5, 0, 0,
-              0, 1.5, 0,
-              0, 0, 0.85875;
+        Kp << 1.7, 0, 0,
+              0, 1.7, 0,
+              0, 0, 0.82875;
          //9.2
          //.1035
-        Kd << 3.6, 0, 0,
-              0, 3.6, 0,
-              0,   0, 0.77035;
+        Kd << 5.6, 0, 0,
+              0, 5.6, 0,
+              0,   0, 1.14035;
 
         r = 0.15; //thrusters radius
         m = 9.2;  //total weight (kg)
@@ -250,6 +256,17 @@ public:
         D_pinv_noRW <<   0.5774,  0.3333, -2.2222,
                         -0.0000, -0.6667, -2.2222,
                          0.5774, -0.3333,  2.2222;
+    }
+
+    void setControllerGains(double _kp_lin, double _kp_ang, double _kd_lin, double _kd_ang) 
+    {
+      Kp(0,0) = _kp_lin;
+      Kp(1,1) = _kp_lin;
+      Kp(2,2) = _kp_ang;
+
+      Kd(0,0) = _kd_lin;
+      Kd(1,1) = _kd_lin;
+      Kd(2,2) = _kd_ang;
     }
 
     void hasReactionWheel(bool val)
@@ -303,12 +320,12 @@ public:
             err[0]=e[0];
             err[1]=e[1];
             err[2]=e[2];
-            err[3]=xd;
-            err[4]=yd;
-            err[5]=thd;
-            // err[3]=ed[0];
-            // err[4]=ed[1];
-            // err[5]=ed[2];
+            // err[3]=xd;
+            // err[4]=yd;
+            // err[5]=thd;
+            err[3]=ed[0];
+            err[4]=ed[1];
+            err[5]=ed[2];
             // ROS_INFO_STREAM("Error\n" << e);
             // ROS_INFO_STREAM("eDot\n" << ed);
             // ROS_INFO_STREAM("eDDot\n" << edd);
@@ -344,6 +361,45 @@ public:
                 }
                 output[3]=0.0;
             }
+        }
+    }
+
+    void updateNoOut(double dt, double pose[3], double att[])
+    {
+        if (dt>0.0000001)
+        {
+            x = pose[0];
+            y = pose[1];
+            th= pose[2];
+
+            // double dx = round((x  - x_prev)*10000.0) / 10000.0;
+            x = x_fir->filter(x);
+            y = y_fir->filter(y);
+            th= z_fir->filter(th);
+
+            xd = (x  - x_prev) / dt;
+            yd = (y  - y_prev) / dt;
+            thd= (th -th_prev) / dt;
+
+            x_prev = x;
+            y_prev = y;
+            th_prev = th;
+
+            xd = xd_fir->filter(xd);
+            yd = yd_fir->filter(yd);
+            thd= zd_fir->filter(thd);
+
+            att[0]=x;
+            att[1]=y;
+            att[2]=th;
+
+            att[3]=xd;
+            att[4]=yd;
+            att[5]=thd;
+
+            // ROS_INFO_STREAM("Error\n" << e);
+            // ROS_INFO_STREAM("eDot\n" << ed);
+            // ROS_INFO_STREAM("eDDot\n" << edd);
         }
     }
 
@@ -435,8 +491,8 @@ void moveBasePlannerGoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg
 
   double x = temp.pose.orientation.x;
   double y = temp.pose.orientation.y;
-  double z = temp.pose.orientation.z;
-  double w = temp.pose.orientation.w;   
+  double z = 0;//temp.pose.orientation.z;
+  double w = 0;//temp.pose.orientation.w;   
   double roll,pitch,yaw;
 
   tf::Quaternion q(x, y, z, w);
@@ -451,36 +507,90 @@ void moveBasePlannerGoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg
 void moveBaseSimpleCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   geometry_msgs::PoseStamped temp;
+  geometry_msgs::PoseStamped temp_in_map;
   temp = *msg;
+  temp.header.stamp = temp.header.stamp - ros::Duration(0.05);
+  try{
+    // listener.waitForTransform("assist/assist_robot", "drogue", now, ros::Duration(3.0));
+    listener->transformPose("/map",temp,temp_in_map); // pose_world is in world frame
+  }
+  catch (tf::TransformException ex){
+    ROS_ERROR("%s",ex.what());
+    ROS_ERROR_STREAM("requested Pose Couldn't translated from:" << temp.header.frame_id << "frame to: /map");
+  }
 
-  double x = temp.pose.orientation.x;
-  double y = temp.pose.orientation.y;
-  double z = temp.pose.orientation.z;
-  double w = temp.pose.orientation.w;   
+  double x = temp_in_map.pose.orientation.x;
+  double y = temp_in_map.pose.orientation.y;
+  double z = temp_in_map.pose.orientation.z;
+  double w = temp_in_map.pose.orientation.w;   
   double roll,pitch,yaw;
 
   tf::Quaternion q(x, y, z, w);
   tf::Matrix3x3 m(q);
   m.getRPY(roll,pitch,yaw);
 
-  cmd_pos.x = temp.pose.position.x;
-  cmd_pos.y = temp.pose.position.y;
+  cmd_pos.x = temp_in_map.pose.position.x;
+  cmd_pos.y = temp_in_map.pose.position.y;
   cmd_pos.z = yaw;
 
   return;
 }
 
-void plannerPositionCallback(const geometry_msgs::Vector3::ConstPtr& msg)
-{   
-    cmd_pos = *msg;
-    // ROS_INFO_STREAM("cmd_pos recieved");
-    return;
+void plannerPositionCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{ 
+  geometry_msgs::PoseStamped temp;
+  temp = *msg;
+  temp.header.stamp = ros::Time(0);//::now() - ros::Duration(0.05);
+
+  geometry_msgs::PoseStamped temp_in_map;
+  try{
+    // listener.waitForTransform("assist/assist_robot", "drogue", now, ros::Duration(3.0));
+    listener->transformPose("/map",temp,temp_in_map); // pose_world is in world frame
+  }
+  catch (tf::TransformException ex){
+    ROS_ERROR("%s",ex.what());
+    ROS_ERROR_STREAM("Controller requested Pose Couldn't translated from: " << temp.header.frame_id << "frame to: /map");
+  }
+
+  double x = temp_in_map.pose.orientation.x;
+  double y = temp_in_map.pose.orientation.y;
+  double z = temp_in_map.pose.orientation.z;
+  double w = temp_in_map.pose.orientation.w;   
+  double roll,pitch,yaw;
+
+  tf::Quaternion q(x, y, z, w);
+  tf::Matrix3x3 m(q);
+  m.getRPY(roll,pitch,yaw);
+
+  cmd_pos.x = temp_in_map.pose.position.x;
+  cmd_pos.y = temp_in_map.pose.position.y;
+  cmd_pos.z = yaw;
+  return;
 }
 
-void plannerVelocityCallback(const geometry_msgs::Vector3::ConstPtr& msg)
+void plannerVelocityCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {   
-    cmd_vel = *msg;
-    // ROS_INFO_STREAM("cmd_vel recieved");
+    geometry_msgs::Vector3Stamped temp,temp_in_map;
+    geometry_msgs::TwistStamped tempTwist=*msg;
+    temp.header = tempTwist.header;
+    temp.vector.x = tempTwist.twist.linear.x;
+    temp.vector.y = tempTwist.twist.linear.y;
+    temp.vector.z = 0.0;
+    temp.header.stamp = ros::Time(0);//::now() - ros::Duration(0.05);
+
+    try{
+      listener->transformVector("/map", temp, temp_in_map);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR("%s",ex.what());
+      ROS_ERROR_STREAM("Controller requested velocity Couldn't translated from: " << temp.header.frame_id << "frame to: /map");
+    }
+
+    cmd_vel.x = temp_in_map.vector.x;
+    cmd_vel.y = temp_in_map.vector.y;
+    cmd_vel.z = tempTwist.twist.angular.z;
+
+    // ROS_INFO_STREAM("u " << cmd_vel.x << "v " <<cmd_vel.y << "w " << cmd_vel.z);
     return;
 }
 
@@ -504,6 +614,8 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "base_controller_node", ros::init_options::NoSigintHandler);
     signal(SIGINT, ctrl_C_Handler);
     ros::NodeHandle nh;
+    tf::TransformListener lr(ros::Duration(3));
+    listener = &lr;
 
     double rate;
     ros::param::param<double>("~loop_rate", rate, 400.0); //the max current of the motor
@@ -513,6 +625,13 @@ int main(int argc, char** argv)
     control.hasReactionWheel(react_wheel);
     bool planner_exist;
     ros::param::param<bool>("~use_with_planner", planner_exist, false); //the max current of the motor
+    double kp_gain_lin, kp_gain_ang, kd_gain_lin,kd_gain_ang;
+    ros::param::param<double>("~kp_gain_lin", kp_gain_lin, 1.7);
+    ros::param::param<double>("~kp_gain_ang", kp_gain_ang, 0.82875);
+    ros::param::param<double>("~kd_gain_lin", kd_gain_lin, 5.6);
+    ros::param::param<double>("~kd_gain_ang", kd_gain_ang, 1.14035);
+    control.setControllerGains(kp_gain_lin, kp_gain_ang, kd_gain_lin, kd_gain_ang);
+    
 
     ros::Subscriber cmd_pose_sub;
     ros::Subscriber cmd_pos_sub;
@@ -546,6 +665,11 @@ int main(int argc, char** argv)
     geometry_msgs::Vector3 e, ed;
     ros::Publisher  e_pub = nh.advertise<geometry_msgs::Vector3>("error", 1);
     ros::Publisher ed_pub = nh.advertise<geometry_msgs::Vector3>("error_dot", 1);
+
+    double attitude[6];
+    geometry_msgs::Vector3 pos, vel;
+    ros::Publisher pos_pub = nh.advertise<geometry_msgs::Vector3>("real_pos", 10);
+    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Vector3>("real_vel", 10);
 
     Vector3d f_robot;
     geometry_msgs::WrenchStamped frobot;
@@ -590,9 +714,9 @@ int main(int argc, char** argv)
         des[3] = cmd_vel.x;
         des[4] = cmd_vel.y;
         des[5] = cmd_vel.z;
-        des[6] = cmd_acc.x;
-        des[7] = cmd_acc.y;
-        des[8] = cmd_acc.z;
+        des[6] = 0.0;//cmd_acc.x;
+        des[7] = 0.0;//cmd_acc.y;
+        des[8] = 0.0;//cmd_acc.z;
 
         //ROS_INFO("dt: %f, x: %f, y: %f, theta: %f",time_step.toSec(), ps_transform.transform.translation.x, ps_transform.transform.translation.y, theta);
         if(controller_enabled) {
@@ -616,6 +740,7 @@ int main(int argc, char** argv)
           ed_pub.publish(ed);
         }
         else {
+          control.updateNoOut(time_step.toSec(), pose, attitude);
           f_robot[0] = 0.0;
           f_robot[1] = 0.0;
           f_robot[2] = 0.0;
@@ -626,9 +751,18 @@ int main(int argc, char** argv)
           torque.data     = 0.0;
           thrust_pub.publish(thrust_vector);
           rwTorque_pub.publish(torque);
+
+          pos.x = attitude[0];
+          pos.y = attitude[1];
+          pos.z = attitude[2];
+          vel.x = attitude[3];
+          vel.y = attitude[4];
+          vel.z = attitude[5];
+          pos_pub.publish(pos);
+          vel_pub.publish(vel);
         }
 
-        frobot.header.frame_id = "base_link";
+        frobot.header.frame_id = "cepheus";
         frobot.header.stamp = pose_stamp;
         frobot.wrench.force.x  = f_robot[0];
         frobot.wrench.force.y  = f_robot[1];

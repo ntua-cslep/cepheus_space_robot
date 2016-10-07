@@ -13,6 +13,7 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
@@ -191,16 +192,17 @@ int main(int argc, char **argv)
     ros::param::param<std::string>("~right_frame_id", frame[R], "right_mouse");
     double cpi;
     ros::param::param<double>("~counts_per_meter", cpi, 800);
-    std::string frame_id;
-    ros::param::param<std::string>("~frame_id", frame_id, "base_link");
+    std::string base_link;
+    ros::param::param<std::string>("~frame_id", base_link, "base_link");
     //publishing odom
     ros::Publisher odom_pub = node.advertise<nav_msgs::Odometry>("mouse/odom", 1000);
     
     //transformations
-    static tf2_ros::TransformBroadcaster odom_broadcaster;
+    // static tf2_ros::TransformBroadcaster odom_broadcaster;
+    static tf::TransformBroadcaster odom_broadcaster;
     geometry_msgs::TransformStamped odom_to_base;
     odom_to_base.header.frame_id = "odom";
-    odom_to_base.child_frame_id = frame_id;
+    odom_to_base.child_frame_id = base_link;
     odom_to_base.header.stamp = ros::Time::now();
     odom_to_base.transform.translation.x = 0;
     odom_to_base.transform.translation.y = 0;
@@ -217,7 +219,7 @@ int main(int argc, char **argv)
     geometry_msgs::Vector3Stamped data, data2;
     nav_msgs::Odometry odom;
     odom.header.frame_id = "odom";
-    odom.child_frame_id = frame_id;
+    odom.child_frame_id = base_link;
     odom.pose.pose.position.x = 0.0;
     odom.pose.pose.position.y = 0.0;
     double th =0, th1 =0, th2 =0;
@@ -291,13 +293,15 @@ int main(int argc, char **argv)
       odom_pub.publish(odom);
  
       
-      odom_to_base.header.stamp = data_stamp;
-      odom_to_base.transform.translation.x = odom.pose.pose.position.x;
-      odom_to_base.transform.translation.y = odom.pose.pose.position.y;
-      odom_to_base.transform.translation.z = 0.0;
-      odom_to_base.transform.rotation = odom.pose.pose.orientation;
-
-      odom_broadcaster.sendTransform(odom_to_base);
+      // odom_to_base.header.stamp = data_stamp;
+      // odom_to_base.transform.translation.x = odom.pose.pose.position.x;
+      // odom_to_base.transform.translation.y = odom.pose.pose.position.y;
+      // odom_to_base.transform.translation.z = 0.0;
+      // odom_to_base.transform.rotation = odom.pose.pose.orientation;
+      tf::Transform tf_trans;
+      tf_trans.setOrigin( tf::Vector3(odom.pose.pose.position.x,odom.pose.pose.position.y,0) );
+      tf_trans.setRotation( tf::Quaternion(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w) );
+      odom_broadcaster.sendTransform(tf::StampedTransform(tf_trans.inverse(), ros::Time::now(), base_link, "odom"));
 
       ros::spinOnce();
       loop_rate.sleep();

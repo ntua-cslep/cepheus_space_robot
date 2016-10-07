@@ -1,14 +1,21 @@
 <?xml version="1.0"?>
 <robot name="cepheus">
  
-
   <link name="cepheus">
     <visual>
       <material name="silver"> <color rgba="0.5 0.5 0.5 1"/> </material>
       <geometry>
-        <cylinder length="0.37" radius="0.15"/>
+        <!--mesh filename="/home/cepheus/catkin_ws/src/cepheus_robot/meshes/SpaceRobot.STL" /-->
+        <cylinder length="0.0037" radius="0.0015"/>
       </geometry>
       <origin xyz="0 0 0.245" rpy="0 0 0"/>
+    </visual>
+    <visual>
+      <material name="silver"> <color rgba="0.2 0.2 0.2 1"/> </material>
+      <geometry>
+        <box size="0.254 0.02 0.02 "/>
+      </geometry>
+      <origin xyz="0.268 0.0 0.1698" rpy="0 0 0"/>
     </visual>
   </link>
 
@@ -16,7 +23,7 @@
     <visual>
       <material name="silver"> <color rgba="0.5 0.5 0.5 1"/> </material>
       <geometry>
-        <cylinder length="0.03" radius="0.045"/>
+        <cylinder length="0.03" radius="0.055"/>
       </geometry>
       <origin xyz="0 0 0.015" rpy="0 0 0"/>
     </visual>
@@ -24,15 +31,55 @@
 
   <link name="camera">
     <visual>
-      <material name="black"> <color rgba="0.02 0.02 0.02 1"/> </material>
+      <material name="camera"> <color rgba="0.2 0.2 0.2 1"/> </material>
       <geometry>
         <box size="0.018 0.0254 0.01 "/>
       </geometry>
-      <origin xyz="0 0 -0.005" rpy="0 0 0"/>
+      <origin xyz="0 0.005 -0.005" rpy="0 0 0"/>
+    </visual>
+    <visual>
+      <material name="camera"> </material>
+      <geometry>
+        <cylinder length="0.003" radius="0.0055"/>
+      </geometry>
+      <origin xyz="0 0 0.0015" rpy="0 0 0"/>
     </visual>
   </link>
 
-  <link name="right_mouse">
+  <link name="probe_ft_sensor">
+    <visual>
+      <material name="botasys"> <color rgba="0.1 0.1 0.1 1"/> </material>
+      <geometry>
+        <cylinder length="0.026" radius="0.04"/>
+      </geometry>
+      <origin xyz="0 0 -0.013" rpy="0 0 0"/>
+    </visual>
+  </link>
+
+  <link name="probe">
+    <visual>
+      <material name="silver"> <color rgba="0.5 0.5 0.5 1"/> </material>
+      <geometry>
+        <cylinder length="0.09955" radius="0.002"/>
+      </geometry>
+      <origin xyz="-0.049775 0 0 " rpy="0 1.570796327 0"/>
+    </visual>
+    <visual>
+      <material name="silver"> </material>
+      <geometry>
+        <sphere radius="0.004"/>
+      </geometry>
+    </visual>
+    <visual>
+      <material name="silver"> </material>
+      <geometry>
+        <cylinder length="0.0016" radius="0.046"/>
+      </geometry>
+      <origin xyz="-0.07275 0 0 " rpy="0 1.570796327 0"/>
+    </visual>
+  </link>
+
+  <!--link name="right_mouse">
     <visual>
       <geometry>
         <box size="0.09 .05 .03"/>
@@ -58,9 +105,9 @@
       <mass value="15"/>
       <inertia ixx="0.04" ixy="0.0" ixz="0.0" iyy="0.04" iyz="0.0" izz="0.02"/>
     </inertial>
-  </link>
+  </link-->
 
-  <link name="T1">
+  <!--link name="T1">
     <visual>
       <material name="thruster"> <color rgba="0 0 0.5 1"/> </material>
       <geometry>
@@ -103,7 +150,7 @@
       <mass value="1"/>
       <inertia ixx="0.004" ixy="0.0" ixz="0.0" iyy="0.004" iyz="0.0" izz="0.002"/>
     </inertial>
-  </link>
+  </link-->
 
 
 
@@ -118,10 +165,22 @@
   <joint name="camera_joint" type="fixed">
     <parent link="cepheus"/>
     <child link="camera"/>
-    <origin xyz="0.434 0.02025 0.1495" rpy="0 1.570796 0"/>
+    <origin xyz="0.44625 0.014 0.1698" rpy="0 1.570796327 0"/>
   </joint>
 
-  <joint name="r_odom" type="fixed">
+  <joint name="botasys_joint" type="fixed">
+    <parent link="cepheus"/>
+    <child link="probe_ft_sensor"/>
+    <origin xyz="0.41945 0.0 0.1698" rpy="1.570796327 0 1.570796327"/>
+  </joint>
+
+  <joint name="probe_joint" type="fixed">
+    <parent link="cepheus"/>
+    <child link="probe"/>
+    <origin xyz="0.519 0.0 0.1698" rpy="0 0 0"/>
+  </joint>
+
+  <!--joint name="r_odom" type="fixed">
     <parent link="cepheus"/>
     <child link="right_mouse"/>
     <origin xyz="0 -0.1 0" rpy="0 0 0"/>
@@ -151,6 +210,6 @@
     <parent link="cepheus"/>
     <child link="T3"/>
     <origin xyz="-0.085 -0.147224319 0.23" rpy="0 0 -0.523598776"/>
-  </joint>
+  </joint-->
   
 </robot>

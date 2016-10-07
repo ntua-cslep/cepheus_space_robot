@@ -15,10 +15,17 @@
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Quaternion.h>
 #include <nav_msgs/Path.h>
+#include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
+#include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 
 geometry_msgs::TransformStamped ps_transform;
 geometry_msgs::PoseStamped cmd_pose;
+double probe_offset;
+
+tf::TransformListener* listener;
 
 nav_msgs::Path path;
 Eigen::MatrixXd path_matrix;
@@ -36,23 +43,129 @@ void PhaseSpaceCallback(const geometry_msgs::TransformStamped::ConstPtr& msg)
 
 void moveBaseSimpleCallback(const geometry_msgs::PoseStamped::ConstPtr& cmd_p)
 {   
-	geometry_msgs::PoseStamped step_pose;
     cmd_pose = *cmd_p;
-    path.header.frame_id = cmd_pose.header.frame_id;
-    path.header.stamp = cmd_pose.header.stamp;
+    cmd_pose.header.stamp = ros::Time::now() - ros::Duration(0.01);
+    geometry_msgs::PoseStamped cmd_pose_in_drogue;
+
+	tf::StampedTransform ps_transform_in_drogue, probe2cepheus;
+	try{
+		listener->transformPose("drogue",cmd_pose,cmd_pose_in_drogue);
+	}
+		catch (tf::TransformException ex){
+		ROS_ERROR("%s",ex.what());
+		ROS_ERROR_STREAM("Planner requested Pose Couldn't translated from: " << cmd_pose.header.frame_id << "frame to: drogue");
+	}
+	try{
+		listener->lookupTransform("drogue", "cepheus", ros::Time(0), ps_transform_in_drogue);
+	}
+		catch (tf::TransformException ex){
+		ROS_ERROR("%s",ex.what());
+		ROS_ERROR_STREAM("requested tf Couldn't found");
+	}
+
+	geometry_msgs::PoseStamped step_pose;
+	step_pose.header.frame_id = "drogue";
+
+    path.header.frame_id = "drogue";
+    path.header.stamp = cmd_pose_in_drogue.header.stamp;
+    //produce the path
+
+
+    tf::Quaternion qf(cmd_pose_in_drogue.pose.orientation.x, cmd_pose_in_drogue.pose.orientation.y, cmd_pose_in_drogue.pose.orientation.z, cmd_pose_in_drogue.pose.orientation.w);
+    tf::Matrix3x3 mf(qf);
+    double qr,qp,thf; 
+    mf.getRPY(qr, qp, thf);
+    double xf = cmd_pose_in_drogue.pose.position.x - probe_offset*cos(thf);
+    double yf = cmd_pose_in_drogue.pose.position.y - probe_offset*sin(thf);
+
+    double x0 = ps_transform_in_drogue.getOrigin().x();
+    double y0 = yf + probe_offset*sin(thf); //ps_transform_in_drogue.transform.translation.y;
+    double heading = atan2(yf-y0 , xf-x0);
+
+	double t_total = (xf - x0) / (target_speed*cos(heading));
+
+	ROS_INFO_STREAM("t_total: " << t_total);
+
+	int n = (int)(t_total/path_t_step) + 1;
+	ROS_INFO_STREAM("Number of position: " << n);
+
+	path_matrix.resize(9, n);
+
+	int count=0;
+	for(double t=0; t < t_total; t+=path_t_step)
+	{	
+
+		path_matrix(0,count) = x0 + target_speed*t*cos(heading);//x0 + const amount of accel + speed*t-ta
+		path_matrix(1,count) = yf;
+		path_matrix(2,count) = thf;
+		path_matrix(3,count) = target_speed*cos(heading);
+		path_matrix(4,count) = 0.0;
+		path_matrix(5,count) = 0.0;
+		path_matrix(6,count) = 0.0;
+		path_matrix(7,count) = 0.0;
+		path_matrix(8,count) = 0.0;
+		
+		step_pose.header.seq = (uint)count;
+		step_pose.header.frame_id = path.header.frame_id;
+		step_pose.header.stamp = path.header.stamp + ros::Duration(t);
+
+		step_pose.pose.position.x = path_matrix(0, count);
+		step_pose.pose.position.y = path_matrix(1, count);
+		step_pose.pose.position.z = 0.0;
+		tf::Quaternion q = tf::createQuaternionFromYaw( path_matrix(2,count) );
+		step_pose.pose.orientation.x = q.x();
+		step_pose.pose.orientation.y = q.y();
+		step_pose.pose.orientation.z = q.z();
+		step_pose.pose.orientation.w = q.w();
+		path.poses.push_back(step_pose);
+		
+		count++;
+		//ROS_INFO_STREAM(count);
+	}
+
+	new_path = true;
+    return;
+}
+
+// Signal-safe flag for whether shutdown is requested
+sig_atomic_t volatile g_request_shutdown = 0;
+// Replacement SIGINT handler
+void ctrl_C_Handler(int sig)
+{
+  g_request_shutdown = 1;
+}
+
+bool giveGoal(std_srvs::Empty::Request & req, std_srvs::Empty::Response & res)
+{
+
+	tf::StampedTransform transform_f;
+    ros::Time now = ros::Time::now();
+  	try{
+	    // listener.waitForTransform("assist/assist_robot", "drogue", now, ros::Duration(3.0));
+	    listener->lookupTransform("/map", "drogue", ros::Time(0), transform_f);
+	}
+    catch (tf::TransformException ex){
+    	ROS_ERROR("%s",ex.what());
+		ROS_ERROR("drogue didnt found");
+	}
+
+	geometry_msgs::PoseStamped step_pose;
+    path.header.frame_id = "drogue";
+    path.header.stamp = now;
     //produce the path
     double x0 = ps_transform.transform.translation.x;
     double y0 = ps_transform.transform.translation.y;
 
-    double xf = cmd_pose.pose.position.x;
-    double yf = cmd_pose.pose.position.y;
-
-    tf::Quaternion qf(cmd_pose.pose.orientation.x, cmd_pose.pose.orientation.y, cmd_pose.pose.orientation.z, cmd_pose.pose.orientation.w);
-    tf::Matrix3x3 mf(qf);
-    double qr,qp,thf; 
-    mf.getRPY(qr, qp, thf);
+    double xf = transform_f.getOrigin().x();
+    double yf = transform_f.getOrigin().y();   
 
     double heading = atan2(yf-y0 , xf-x0);
+
+    xf = xf - probe_offset*cos(heading);
+    yf = yf - probe_offset*sin(heading);
+
+    double thf=heading; 
+
 	double ax = target_accel*cos(heading);
 	double ay = target_accel*sin(heading);
 	double t_acc = target_speed/target_accel;
@@ -114,15 +227,7 @@ void moveBaseSimpleCallback(const geometry_msgs::PoseStamped::ConstPtr& cmd_p)
 	}
 
 	new_path = true;
-    return;
-}
-
-// Signal-safe flag for whether shutdown is requested
-sig_atomic_t volatile g_request_shutdown = 0;
-// Replacement SIGINT handler
-void ctrl_C_Handler(int sig)
-{
-  g_request_shutdown = 1;
+	return true;
 }
 
 int main(int argc, char** argv) 
@@ -130,12 +235,16 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "base_planner_node", ros::init_options::NoSigintHandler);
     signal(SIGINT, ctrl_C_Handler);
     ros::NodeHandle nh;
+    tf::TransformListener lr(ros::Duration(3));
+    listener = &lr;
 
     ros::ServiceClient controller_srv_client = nh.serviceClient<std_srvs::SetBool>("controller_cmd");
+    ros::ServiceServer set_position = nh.advertiseService("give_goal", giveGoal);
 
     ros::param::param<double>("~time_step" , path_t_step , 0.1); 
     ros::param::param<double>("~target_speed", target_speed, 0.01); 
     ros::param::param<double>("~target_accel", target_accel, 0.02); 
+    ros::param::param<double>("~probe_offset", probe_offset, 0.525); 
 
     ros::Duration time_step(path_t_step);
 
@@ -144,12 +253,15 @@ int main(int argc, char** argv)
        
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("path", 1000);
 
-    geometry_msgs::Vector3 cmd_pos;
-	geometry_msgs::Vector3 cmd_vel;
+
+    geometry_msgs::PoseStamped cmd_pos;
+	geometry_msgs::TwistStamped cmd_vel;
+    cmd_pos.header.frame_id = "drogue";
+	cmd_vel.header.frame_id = "drogue";
 	geometry_msgs::Vector3 cmd_acc;
 
-    ros::Publisher pos_pub = nh.advertise<geometry_msgs::Vector3>("planner_pos", 1);
-    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Vector3>("planner_vel", 1);
+    ros::Publisher pos_pub = nh.advertise<geometry_msgs::PoseStamped>("planner_pos", 1);
+    ros::Publisher vel_pub = nh.advertise<geometry_msgs::TwistStamped>("planner_vel", 1);
     ros::Publisher acc_pub = nh.advertise<geometry_msgs::Vector3>("planner_acc", 1);
 
     bool path_running=false;
@@ -178,12 +290,14 @@ int main(int argc, char** argv)
 
     	if(path_running) 
     	{
-			cmd_pos.x = path_matrix(0,cnt);
-			cmd_pos.y = path_matrix(1,cnt);
-			cmd_pos.z = path_matrix(2,cnt);
-	 		cmd_vel.x = path_matrix(3,cnt);
-	 		cmd_vel.y = path_matrix(4,cnt);
-	 		cmd_vel.z = path_matrix(5,cnt);
+			cmd_pos.pose.position.x = path_matrix(0,cnt);
+			cmd_pos.pose.position.y = path_matrix(1,cnt);
+			cmd_pos.pose.position.z =0.0;
+			cmd_pos.pose.orientation = tf::createQuaternionMsgFromYaw(path_matrix(2,cnt));
+
+	 		cmd_vel.twist.linear.x = path_matrix(3,cnt);
+	 		cmd_vel.twist.linear.y = path_matrix(4,cnt);
+	 		cmd_vel.twist.angular.z = path_matrix(5,cnt);
 			cmd_acc.x = path_matrix(6,cnt);
 	 		cmd_acc.y = path_matrix(7,cnt);
 			cmd_acc.z = path_matrix(8,cnt);
