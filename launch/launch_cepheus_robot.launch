@@ -15,7 +15,7 @@
                 
         </node>
 
-        <node name="cepheus_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" args="joint_state_publisher reaction_wheel_effort_controller" output="screen">
+        <node name="cepheus_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" args="joint_state_publisher reaction_wheel_effort_controller left_shoulder_position_controller" output="screen">
         </node>
 
         <node name="cepheus_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen">

@@ -57,14 +57,23 @@ int main(int argc, char** argv)
     ros::Rate loop_rate(rate);
 
     double max_thrust;
-    double max_cur;
     double rw_max_torque, rw_max_speed, rw_max_power, rw_total_inertia;
     ros::param::param<double>("~thruster_force", max_thrust, 1.5); //the thrust of an open thruster in Newtons
-    ros::param::param<double>("~max_motor_current", max_cur, 1.72); //the max current of the motor
+    //ros::param::param<double>("~max_motor_current", max_cur, 1.72); //the max current of the motor
     ros::param::param<double>("~rw_max_torque", rw_max_torque, 0.5); 
     ros::param::param<double>("~rw_max_speed",  rw_max_speed, 100); 
     ros::param::param<double>("~rw_max_power",  rw_max_power, 60); 
     ros::param::param<double>("~rw_total_inertia", rw_total_inertia, 0.00197265); 
+
+    double max_cur[8];
+    max_cur[0] = 1.72;
+    max_cur[1] = 3.1;
+    max_cur[2] = 3.1;
+    max_cur[3] = 3.1;
+    max_cur[4] = 3.1;
+    max_cur[5] = 3.1;
+    max_cur[6] = 3.1;
+    max_cur[7] = 3.1;
 
     robot.setParam(max_cur, max_thrust);
 
@@ -91,6 +100,7 @@ int main(int argc, char** argv)
         robot.readEncoders(time_step);
         cm.update(curr_time, time_step);
         robot.writeMotors();
+        robot.heartbeat();
 
         // //saturate acceleration og reaction wheel
         // double rw_available_torque;
