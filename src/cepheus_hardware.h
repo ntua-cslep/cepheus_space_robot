@@ -8,14 +8,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <ros/ros.h>
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/joint_state_interface.h>
 #include <hardware_interface/robot_hw.h>
 #include <dm7820_library.h>
 
+#define LIMIT_L1 1 // limits switch pin in port 0
+#define LIMIT_L2 3 // limits switch pin in port 0
+
 #define FIR_LENGTH 2 
 #define PWM_MOTOR_FREQ 5000
-#define PWM_HOBBY_SERVO_FREQ 100
+#define PWM_HOBBY_SERVO_FREQ 50
 #define PWM_THRUSTER_FREQ 10
 #define ADC_PWM_FREQ 25000
 
@@ -24,10 +28,10 @@
 #define PWM_MOTOR_MIN_DT (PWM_MOTOR_PERIOD_COUNTS/10)
 #define PWM_MOTOR_MAX_DT (PWM_MOTOR_PERIOD_COUNTS - (PWM_MOTOR_PERIOD_COUNTS/10))
 
-#define PWM_HOBBY_SERVO_PERIOD_COUNTS (5000000/PWM_HOBBY_SERVO_FREQ)
-#define PWM_HOBBY_SERVO_RANGE 10000//PWM range must be 0.5ms-2.5ms = 2ms for the servos
-#define PWM_HOBBY_SERVO_MIN_DT  2500 //0.5ms for period of 1/25MHz 
-#define PWM_HOBBY_SERVO_MAX_DT 12500 //2.5ms for period of 1/25MHz 
+#define PWM_HOBBY_SERVO_PERIOD_COUNTS (2500000/PWM_HOBBY_SERVO_FREQ)
+#define PWM_HOBBY_SERVO_RANGE  4750//PWM range must be 0.6ms-2.4ms = 1.8ms for the servos
+#define PWM_HOBBY_SERVO_MIN_DT 1250 //0.6ms for period of 1/25MHz 
+#define PWM_HOBBY_SERVO_MAX_DT 6000 //2.5ms for period of 1/25MHz 
 
 #define ADC_PWM_PERIOD_COUNTS (25000000/ADC_PWM_FREQ)
 
@@ -38,6 +42,10 @@ public:
   void heartbeat();
   void setThrustPwm(double*, double, double);
   void writeMotors();
+  bool isLimitReached(int i);
+  void setHomePos(int i, float val);
+  void readLimitSwitches();
+  uint8_t init();
   void readEncoders(ros::Duration);
   void setParam(double*, double);
   void setCmd(int,double);
@@ -60,10 +68,12 @@ private:
   double force[4];
 
 /******motors********/
+  int limit[8];
   double cmd[12];
   uint16_t width[12];
   uint16_t dir[10];
   double current[8];
+  double home_pos[8];
   double pos[8], prev_pos[8], offset_pos[8];
   double vel[8];
   double eff[8];

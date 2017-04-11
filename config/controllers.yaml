@@ -11,7 +11,7 @@ reaction_wheel_position_controller:
 reaction_wheel_velocity_controller:
   type: effort_controllers/JointVelocityController
   joint: reaction_wheel_joint
-  pid: {p: -0.2, i: 0.0, i_clamp: 0.05, d: 0.0}
+  pid: {p: -0.05, i: 0.0, i_clamp: 0.05, d: 0.0}
 
 reaction_wheel_effort_controller:
   type: effort_controllers/JointEffortController
@@ -21,17 +21,16 @@ reaction_wheel_effort_controller:
 left_shoulder_position_controller:
   type: effort_controllers/JointPositionController
   joint: left_shoulder
-  pid: {p: 0.1, i: 0.0, i_clamp: 0.0, d: 0.01}
+  pid: {p: 0.1, i: 0.0, i_clamp: 0.0, d: 0.02}
 
 left_elbow_position_controller:
   type: effort_controllers/JointPositionController
   joint: left_elbow
-  pid: {p: 0.1, i: 0.0, i_clamp: 0.0, d: 0.01}
+  pid: {p: 0.1, i: 0.0, i_clamp: 0.0, d: 0.02}
 
 left_wrist_position_controller:
-  type: effort_controllers/JointPositionController
+  type: position_controllers/JointPositionController
   joint: left_wrist
-  pid: {p: 1.0, i: 0.0, i_clamp: 0.0, d: 0.01}
 
 # Trajectory controller ------------------------------
 left_manipulator_trajectory_controller:
@@ -39,11 +38,9 @@ left_manipulator_trajectory_controller:
   joints:
       - left_shoulder
       - left_elbow
-      - left_wrist
   gains: 
     left_shoulder: {p: 0.1, i: 0.0, i_clamp: 0.0, d: 0.01}
     left_elbow: {p: 0.1, i: 0.0, i_clamp: 0.0, d: 0.01}
-    left_wrist: {p: 1, i: 0.0, i_clamp: 0.0, d: 0.0}
 
 # Gripper action Controller --------------------------
 left_gripper_position_controller:

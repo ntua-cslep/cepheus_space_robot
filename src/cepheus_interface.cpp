@@ -56,6 +56,7 @@ int main(int argc, char** argv)
     ros::param::param<double>("~loop_rate", rate, 500); 
     ros::Rate loop_rate(rate);
 
+    double l1_limit_pos, l2_limit_pos;
     double max_thrust;
     double rw_max_torque, rw_max_speed, rw_max_power, rw_total_inertia;
     ros::param::param<double>("~thruster_force", max_thrust, 1.5); //the thrust of an open thruster in Newtons
@@ -64,6 +65,8 @@ int main(int argc, char** argv)
     ros::param::param<double>("~rw_max_speed",  rw_max_speed, 100); 
     ros::param::param<double>("~rw_max_power",  rw_max_power, 60); 
     ros::param::param<double>("~rw_total_inertia", rw_total_inertia, 0.00197265); 
+    ros::param::param<double>("~left_shoulder_limit_pos", l1_limit_pos, 2.4); 
+    ros::param::param<double>("~left_elbow_limit_pos", l2_limit_pos, 1.4); 
 
     double max_cur[8];
     max_cur[0] = 1.72;
@@ -84,10 +87,14 @@ int main(int argc, char** argv)
     
     controller_manager::ControllerManager cm(&robot);
 
+    ros::Time prev_time = ros::Time::now();
+
+    robot.setHomePos(4, l1_limit_pos); 
+    robot.setHomePos(5, l2_limit_pos);
+    robot.init();
+
     ros::AsyncSpinner spinner(1);
     spinner.start();
-
-    ros::Time prev_time = ros::Time::now();
 
     while(!g_request_shutdown)
     {

@@ -57,7 +57,7 @@
     <child link="reaction_wheel"/>
     <origin xyz="0.065 0 0.03815" rpy="0 0 0"/>
     <axis xyz="0 0 1" /> 
-    <!--limit effort="0.22" velocity="200.5"/-->
+    <limit effort="0.22" velocity="200.5"/>
   </joint>
 
 
